@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Large datasets (persisted to Google Drive, not tracked in git)
+data/*.zip
+circuitsight_dataset/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Notebook / training scratch
+smoke_out/
+circuitsight_qlora/
+preview.png
