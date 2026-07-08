@@ -16,4 +16,9 @@ venv/
 # Notebook / training scratch
 smoke_out/
 circuitsight_qlora/
-preview.png
+preview*.png
+
+# Local validation scratch (not part of the deliverable)
+scratch_*.py
+scratch_imgs/
+.mplcache/
