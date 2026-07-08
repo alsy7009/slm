@@ -1,70 +1,105 @@
-# CircuitSight — Behavior Spec & BrainLift
+# CircuitSight — Product Requirements Document
 
-*A small vision-language model that reads an AP-Physics-C circuit schematic and solves it — grounding every claim in the image and verifying its own steps.*
+*A small vision-language model (SLM/VLM) that reads an AP-Physics-C circuit schematic and solves it — grounding every claim in the image and verifying its own steps.*
 
----
-
-## Part 1 — Behavior Spec
-
-### The one-sentence spec
-
-Given a schematic image and a question, the model identifies the components (pointing to where each one is in the image), states the topology, writes the governing equations, solves for the requested quantity, and checks its own answer — or, if a value is genuinely illegible, says so and reports `null` rather than inventing it.
-
-### Required output structure (in this order — perception before answer)
-
-1. **Components** — the inventory (e.g., "1 voltage source, 3 resistors"), each with the image region it occupies.
-2. **Concepts used** — the minimal set of solving concepts the problem actually requires (Ohm's law, parallel/series combination).
-3. **Topology** — what is in series / parallel, referencing the grounded components.
-4. **Equations & solution** — step by step, with intermediate values (node voltages, branch currents).
-5. **Verification** — a consistency check (e.g., plug the answer back: V = I·R_eq; confirm a parallel combination is smaller than its smallest branch).
-6. **FINAL** — a machine-readable line: `FINAL: {answer_id, answer_current, R_eq, n_resistors, abstain}`.
-
-### Pass / fail rules (all mechanically checkable against gold)
-
-- **Component identification** — right count and types. Fail on miscount, wrong type, or a hallucinated component.
-- **Grounding** — cited regions overlap the true component locations. Fail on regions that don't correspond to a real component (a hallucinated coordinate).
-- **Topology** — the stated series/parallel structure matches the gold netlist (graph-isomorphic).
-- **Every intermediate value** — node voltages and branch currents match the solver within tolerance. A correct final answer reached through a wrong intermediate step is a **fail** (no lucky guesses).
-- **Final answer** — matches SPICE within tolerance.
-- **Concept scoping** — declared concepts are a subset of those the problem needs. Inventing an unneeded concept is a **concept-hallucination** fail.
-- **Honesty** — for an illegible value, output `null`. Inventing a number for an unreadable value (**fabrication**) is the cardinal failure, scored separately.
-
-### What "good" is (the metrics, base vs. tuned)
-
-Primary: component accuracy, grounding accuracy, topology accuracy, **step-verified solve accuracy** (final answer *and* all intermediates correct), and **fabrication rate** vs. **honest-abstention rate**. Secondary: concept-hallucination rate; a judged clarity score. The headline result is base-vs-tuned on a **hand-labeled real-world** set, not synthetic.
+> Companion docs: [behavior_spec_brainlift.md](behavior_spec_brainlift.md) (exact I/O contract + research grounding), [progress.md](progress.md) (changelog). This PRD is the "why / who / what / how we win" layer; the Behavior Spec is the precise "what the output must look like."
 
 ---
 
-## Part 2 — BrainLift (research grounding)
+## 1. Problem
 
-### Purpose
+General-purpose LLMs and VLMs are unreliable on circuits — and they fail on *simple* ones. Benchmarking work and our own testing show the failure is not arithmetic (Ohm's law is easy) but **perception**: the model sets up equations for a circuit it misread. Documented failure modes:
 
-Prove that a small (~3B) VLM can be fine-tuned to solve textbook circuits *reliably* — where general models fail on even simple ones — by making the training data do two things the literature says actually move the needle: **ground reasoning in the image** and **verify reasoning step-by-step, not just the final answer**.
+- **Spatial blindness** — miscounting parallel branches, missing line junctions, confusing a capacitor for an inductor.
+- **Text-prior over-reliance** — answering from what circuits "usually" look like instead of *this* image; controlled text perturbations flip answers.
+- **Lucky guesses** — a right final number reached through wrong intermediate steps, which naive final-answer training rewards.
 
-**In scope:** DC / AP-level circuits; image → grounded, verified worked solution; honest `null` on illegible values; synthetic data with exact labels; a real-world transfer eval.
-**Out of scope:** transistor-level analog IC design; solving in the model without verification; baking in changing facts.
+## 2. What we're building
 
-### Spiky points of view
+A ~3B VLM (Qwen2.5-VL-3B) QLoRA-fine-tuned on synthetic circuits with **exact, solver-derived labels**, so that on an image + question it produces a *grounded, step-verified* worked solution: it names each component and points to where it is in the image, states the topology, solves with correct intermediate values, checks itself, and abstains (`null`) rather than inventing an illegible value.
 
-1. **The failure isn't arithmetic, it's reading the wrong circuit — so ground the reasoning in the image.** General VLMs miss simple circuits because they set up equations for a circuit they misread or half-invented, not because Ohm's law is hard. The fix isn't more reasoning text; it's forcing every perception step to point at the image region it came from, which is documented to cut hallucination and improve generalization.
+### Our moat (the two things generic models can't do reliably)
 
-2. **More chain-of-thought can make a VLM worse; grounding and verification are what help.** Naive CoT fine-tuning increases reliance on textual priors and causes premature answer commitment, sometimes degrading visual reasoning. So the value is not in longer solutions but in solutions that stay tied to the image and end by checking themselves.
+1. **Grounded perception** — correctly identify component **types**, **counts**, and **locations** (bounding boxes), including nodes/junctions.
+2. **Correct intermediate steps** — every node voltage / branch current / R_eq is right, not just the final answer.
 
-3. **A right answer from wrong reasoning is a failure, not a success.** Keeping solutions on final-answer-correctness alone teaches "lucky guesses." Because we have a circuit solver, we can verify every intermediate value and keep only genuinely-sound solutions — a cleaner signal that raises the achievable ceiling.
+Both are backed by research and both are **mechanically verifiable** against our solver — see the Behavior Spec's pass/fail rules and BrainLift sources.
 
-### Key insights (with evidence)
+## 3. Goals / Non-goals
 
-- **Grounding reduces hallucination.** VLMs "hallucinate less and reason more accurately when first prompted to generate grounded visual descriptions"; grounding in visual regions "curbs hallucination and promotes generalization." Circuit VLMs specifically show "spatial blindness," struggling to count parallel components or identify junctions. → *Add bounding-box grounding per perception step.*
-- **CoT can backfire for VLMs.** Standard CoT-SFT shows "premature answer commitment and limited direct visual-token access," "increasing reliance on textual priors." → *Perception (grounded) must come before any number; keep solutions tight, not verbose.*
-- **Verify reasoning, not just answers.** Step-level verification with a computer-algebra checker "rejects ~34% of correct-answer solutions that outcome verification would keep," and this cleaner signal lifted accuracy 80.5%→91.0% where answer-only verification plateaued. → *Use SPICE to verify every intermediate value as a data filter, and include a verification step in the target.*
-- **Preference pairs sharpen sound-vs-flawed reasoning.** Turning step-checks into DPO pairs "further teaches the model to tell the two apart." → *Validates our v2 mistake pairs (correct = sound reasoning, wrong = flawed).*
-- **Self-verification fixes consistency errors.** A "non-trivial portion of errors arise not from lack of knowledge but from failures in global consistency," which a self-check mitigates. → *End each solution with a sanity check.*
+**Goals**
+- Beat the base (un-tuned) model on a **hand-labeled real-world** eval, on: component accuracy, grounding accuracy, topology accuracy, step-verified solve accuracy, and honest-abstention vs. fabrication.
+- Cover **AP Physics C (E&M)** DC/steady-state content: resistor networks (series/parallel), Wheatstone bridge, RC/RL at t=0 and t→∞, and basic transient reasoning (time constants).
+- Fit the compute budget: dataset generated on CPU; training ≈15–25 min on a single T4 (one short QLoRA run, few hundred steps).
 
-### What the dataset already has vs. what these findings add
+**Non-goals**
+- Transistor-level / analog IC design; AC phasor/frequency-domain analysis; full transient waveforms `v(t)` over time.
+- Solving "in the model's head" without a visible verification step.
+- Baking in changing facts; this is a reasoning-on-the-image task.
 
-Already present: layered labels (components / topology / values), concept declaration, skill tags, honest-abstention cases, deliberate-mistake preference pairs, SPICE-verified final answers.
-Added from this research: (1) **visual grounding** — bounding boxes per component/perception step; (2) **step-level verification as a data filter** — keep a solution only if every intermediate matches SPICE; (3) an explicit **verification step** in the solution text.
+## 4. Users & user story
 
-### Sources
+**Primary user:** an AP Physics C student (or a tutoring/grading tool acting on their behalf) who has a schematic — from a textbook, a worksheet, or a photo of the board — and a question about it.
 
-Apple ML — Improving VLM CoT (CoT + outcome rewards / DPO). https://machinelearning.apple.com/research/chain-of-thought · Attention-guided CoT fine-tuning (premature commitment; textual-prior reliance). https://arxiv.org/pdf/2606.01558 · Do VLMs See or Guess? (textual-prior reliance, grounding recovers accuracy). https://arxiv.org/pdf/2606.10400 · Grounded RL for Visual Reasoning (grounding reduces hallucination). https://arxiv.org/pdf/2505.23678 · Ground-R1 (grounded visual reasoning). https://arxiv.org/html/2505.20272v2 · Reliable Self-Improvement by Verifying Reasoning (step-checking, +10.5 pts, DPO pairs). https://arxiv.org/pdf/2603.21558 · Self-Verification (global-consistency errors). https://arxiv.org/pdf/2601.03144 · VLM-CAD (VLM spatial blindness in circuits; deterministic grounding). https://arxiv.org/html/2601.07315v4 · SINA (schematic→netlist; component boxes + connectivity). https://arxiv.org/pdf/2601.22114 · MAPS (netlist + SPICE for physics circuit reasoning). https://arxiv.org/pdf/2501.10768 · Qwen2.5-VL + Unsloth QLoRA (feasibility). https://unsloth.ai/docs/basics/vision-fine-tuning · QLoRA. https://arxiv.org/abs/2305.14314
+**Secondary user:** the project team, who need every output to be auto-gradable against gold so we can chart base-vs-tuned.
+
+### User story
+
+> *As a student, I photograph a circuit from my homework and ask "what's the current through R2?" I want the model to first show me it read the circuit correctly — which components are where, what's in series/parallel — then walk the solution with real intermediate numbers and a sanity check, so I can trust the answer and learn the method. If a value in my photo is smudged, I want it to tell me, not make one up.*
+
+### User flow
+
+1. **Input** — the user supplies a schematic image + a natural-language question (e.g., "Find the voltage across the capacitor at steady state.").
+2. **Perception (grounded)** — the model lists components with image regions: `R1 <box>[x0,y0,x1,y1]</box> (100Ω); C1 <box>…</box> (10µF); V1 <box>…</box> (12V) …`, plus nodes/junctions.
+3. **Concepts** — the minimal concept set the problem needs (Ohm's law, parallel combination, "capacitor is open at steady state").
+4. **Topology** — series/parallel structure referencing the grounded ids.
+5. **Solve** — step by step with intermediate values (reductions, R_eq, node voltages, branch currents).
+6. **Verify** — a consistency check (e.g., V = I·R_eq; a parallel combo is smaller than its smallest branch; a balanced bridge carries zero bridge current).
+7. **FINAL** — one machine-readable line: `FINAL: {"quantity","target_id","value","unit","abstain"}`.
+8. **Abstain path** — if a required value is illegible, the relevant step reports `?`/`null` and `FINAL` has `abstain:true, value:null` — never a fabricated number.
+
+*(Steps 2–7 are the required output order — perception strictly before any number. See the Behavior Spec for the exact contract and tolerances.)*
+
+## 5. Functional requirements
+
+**Data generation** (`src/CircuitSight_dataset_generation.ipynb`)
+- Synthesize circuits with a netlist → schematic render → numeric MNA solve, so every label is exact.
+- Families: **DC resistor** (series/parallel chains), **reactive** (one C or L, solved at t=0 or t→∞), **Wheatstone bridge** (non-series-parallel, nodal). Mixed per configurable fractions.
+- Emit per record: image, question, `gold_components` (type inventory), `gold_topology`, `gold_answer`, `gold_values` (R_eq, I_total, node voltages, branch currents), `gold_boxes` (0–1000 normalized), `skills`, `concepts`, and the `target_output` worked solution.
+- **Grounding:** every component (and node/junction) has a bounding box in the target and in `gold_boxes`.
+- **Honesty:** an abstention slice occludes one value; its target reports `null`.
+- **Diversity:** render-time domain randomization (styles, line widths, flips, rotation, backgrounds, noise, label jitter) so the model transfers to real images rather than memorizing one renderer.
+- **Preference data (deferred):** flag-gated v2 "deliberate mistake" pairs for later DPO.
+
+**Training** (`src/CircuitSight_training.ipynb`)
+- Qwen2.5-VL-3B, QLoRA via Unsloth; capped by `MAX_STEPS` for a ~15–25 min T4 run; validation on a held-out synthetic split.
+
+**Eval** (same notebook)
+- Base-vs-tuned harness scoring the moat axes (see §6), all mechanically checkable against gold; plus a hand-labeled real-world transfer set.
+
+## 6. Success metrics
+
+**Primary (headline = on the real-world set, base vs. tuned):**
+- Component accuracy (count + type), reactive type accuracy (C-vs-L).
+- Grounding accuracy (IoU ≥ 0.5 vs. gold) and grounding-hallucination rate.
+- Topology accuracy (graph-isomorphic to gold).
+- **Step-verified solve accuracy** — final answer *and every checked intermediate* correct.
+- **Fabrication rate** vs. **honest-abstention rate**.
+
+**Secondary:** concept-hallucination rate; per-question-type answer accuracy; a judged clarity score.
+
+**Bar:** tuned model beats base on grounding, step-verified accuracy, and fabrication rate by a clear margin on the real set.
+
+## 7. Milestones / status
+
+- ✅ Generation pipeline (3 families), grounded boxes, generalized `FINAL` schema, abstention slice, eval harness (see progress.md).
+- 🔄 **Now:** domain randomization for transfer; full intermediate verification (score + enrich every intermediate, not just R_eq).
+- ⏭️ First real base-vs-tuned run on regenerated data (tomorrow's GPU window).
+- ⏭️ Hand-labeled real-world transfer set; later: v2 mistake pairs → DPO.
+
+## 8. Risks & mitigations
+
+- **Overfitting to the matplotlib style → fails on real images** (kills the headline metric). *Mitigation:* aggressive render-time domain randomization; the real-world eval is the source of truth, not synthetic val.
+- **Tiny training budget (few hundred steps)** underfits a broad task. *Mitigation:* keep the behavior narrow and consistent; balance the dataset by family/qtype/difficulty so every capability appears in the steps seen.
+- **CoT verbosity hurting VLMs** (documented). *Mitigation:* perception-first ordering, tight solutions, watch grounding accuracy as text grows.
+- **Reward-hacking via lucky guesses.** *Mitigation:* step-verified accuracy as the primary solve metric; intermediates checked against the solver.

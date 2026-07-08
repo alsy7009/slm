@@ -12,6 +12,20 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Full intermediate verification: enriched targets + eval + filter (2026-07-08)
+- **What:** (1) **Targets** now emit a concise `Branch currents: I(R1)=… A, …` line for every solved DC and bridge record (the current through *each* resistor, incl. how it splits in parallel blocks / flows in the bridge). (2) **Eval** parses those and verifies every substantive (≥1 mA) branch current against `gold_values`; new `intermediates_accuracy` axis, and `step_verified_accuracy` now requires component + R_eq + **all intermediates** + answer. (3) **Verify-as-filter** (`verify_record`) drops any record whose printed intermediates don't match the solver (guarantees dataset consistency; abstain/open-circuit records exempt).
+- **Why:** This is the second half of the moat — "correct intermediate steps." Enriching the target *trains* the model to produce every branch current (where generic models fail: equal-splitting parallels, collapsing the bridge); the eval upgrade *measures* it and kills lucky guesses (right answer via wrong steps).
+- **Validated:** scratch: perfect model 1.0 on `intermediates_accuracy`/`step_verified`; a corrupted-intermediates model craters to 0.0 intermediates / 0.14 step-verified while answer stays 1.0 (proves the axis bites). Notebook: both compile; ported real eval cell scores perfect model 1.0 on all axes; 300-record generation run drops 0 to the filter, keeps abstain, and every DC/bridge solved target carries branch currents.
+
+## wip — Domain randomization for synthetic→real transfer (2026-07-08)
+- **What:** New `domain_randomize()` applied to **every** image (chain, bridge, abstain) after render: small ±4° rotation (boxes carried through the rotation via a corner transform), faint graph-paper grid, off-white paper tint, brightness/contrast/sharpness jitter, Gaussian blur, sensor noise, and JPEG artifacts. Replaced the abstain-only `light_blur` (blur was leaking as an abstain *tell*). Prototyped in `scratch_pipeline.py`, ported verbatim to notebook cell 18 + wired into all three `make_record` branches.
+- **Why:** All training images were clean matplotlib in one style; the headline metric is real-image transfer. Uniform augmentation prevents renderer-memorization and removes the blur→abstain leak.
+- **Validated:** 387 scratch records + 150 notebook-`make_record` records → 0 invalid/out-of-range boxes, box-count matches gold, abstain still reports `null`. Rotation box-transform verified visually (overlays at exaggerated +12°: every box lands on its component, chain + bridge). Both notebooks compile; ported eval still scores a gold-fed perfect model 1.0 on all axes.
+
+## wip — Real PRD with user story/flow (2026-07-08)
+- **What:** Rewrote `docs/prd.md` (was a byte-for-byte copy of the Behavior Spec) into an actual PRD: problem, moat, goals/non-goals, primary/secondary users, a user story + 8-step user flow, functional requirements, success metrics, milestones, risks.
+- **Why:** The PRD duplicated the Behavior Spec, giving reviewers no product-level "why/who".
+
 ## 7bdb916 — Cap training to `MAX_STEPS`, smaller images (2026-07-08)
 - **What:** Added `CFG["MAX_STEPS"]=150` (training cell uses `max_steps` when set, else epochs); `MAX_IMAGE_PX` 768→512; warmup 10→5, logging 25→10, `save_strategy="no"`. Prints images actually seen.
 - **Why:** A "1 epoch" run was ~2,600 optimizer *steps* over ~10k images (~6.5 h on a T4). This narrow behavior converges in a few hundred steps → target ~15–25 min on a T4.
