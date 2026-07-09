@@ -12,6 +12,11 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Rebalance mix toward symbolic + MAX_STEPS 275->350 (2026-07-09)
+- **What:** CONFIG rebalanced — BRIDGE 0.15, REACTIVE 0.35->0.25 (dc-resistor -> ~0.60), and within DC SYMBOLIC 0.35->0.45 / MIXED 0.20->0.25. Net ~37% of the set is now symbolic/mixed (was ~27%), numeric still the majority. Training MAX_STEPS 275->350 (~1,400 images seen, ~30-40 min on a T4).
+- **Why:** The real transfer eval is mostly symbolic; the seen-image mix (not dataset size) is what a ~1,400-step run learns, so the mix is the lever. Note: symbolic applies to the DC-resistor family only — reactive/bridge stay numeric (reactive-symbolic is a possible follow-up).
+- **Validated:** 500-record draw hits the target mix (dc 61 / reactive 25 / bridge 14; symbolic 28 / mixed 13 / numeric 59 of non-abstain); both notebooks compile.
+
 ## wip — Modernized v2 mistake/correction generator (all families + question types) (2026-07-09)
 - **What:** Rebuilt the flag-gated v2 pair generator on the current pipeline (was legacy pure-resistor, numeric-DC, "total current" only). It now spans **all 3 families** (dc/reactive/bridge) and **all question types**, emitting `correct_solution` + `wrong_solution` in the same v1 worked-solution format, plus `error_type / first_error_step / error_explanation / correction / critique_target / correct_final / wrong_final`. Perception-relevant errors: value_misread, omit_branch, parallel_as_series, **regime_confusion** (cap/inductor open-short swap), **bridge_collapse** ((R1+R3)∥(R2+R4), ignore R5). Each mistake is verified to change the asked answer by > the eval's 3% tolerance. Supports DPO (chosen/rejected) or critique SFT.
 - **Why:** So v2 (a post-v1 DPO/critique stage) is ready to flip on later without a rewrite. `INCLUDE_MISTAKES` stays **False** — does not run in tomorrow's v1 generation.
