@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Eval: add grounding P/R/F1 + abstention precision/recall (2026-07-09)
+- **What:** `aggregate()` (base-vs-tuned §9) now also reports **grounding_recall / grounding_precision / grounding_f1** (recall = gold components localized at IoU>=0.5; precision = predicted boxes that hit) and **abstention_precision / abstention_recall** (positive class = "abstain", over all records). These auto-appear in the §9 base->tuned delta table. Existing metrics unchanged (component/reactive-type/answer/Req/intermediates/step_verified accuracy, fabrication vs honest-abstention, concept-hallucination, per-qtype).
+- **Why:** the user wanted precision/recall-style stats for the comparison; grounding and abstention are the two axes where P/R is genuinely meaningful.
+- **Validated:** scratch + notebook: perfect model -> grounding P/R/F1 = 1.0; a constructed abstention mix gives precision=recall=2/3 as expected; both notebooks compile; perfect-model self-check still 1.0 on all accuracy axes.
+
+
 ## wip — Effective batch 4 -> 8 (BATCH=2) + smoke test uses real batch (2026-07-09)
 - **What:** Training BATCH 1->2 (GRAD_ACCUM=4 => effective batch 8; ~2,800 images seen at 350 steps). The section-4 smoke test now uses per_device_train_batch_size=CFG["BATCH"] so its peak-VRAM readout reflects the real run. OOM fallback in CFG: BATCH=1, GRAD_ACCUM=8 (same effective 8, no extra VRAM).
 - **Why:** effective batch 4 was small; the smoke test showed ~5.7/15.6 GB headroom on a T4, so BATCH=2 uses parallelism for smoother gradients + more coverage. A100 can go BATCH 4-8.
