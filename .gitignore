@@ -6,6 +6,14 @@ data/*.zip
 circuitsight_dataset/
 *.zip
 
+# Real-world eval material scraped from the web (copyright: not redistributed, non-commercial research use)
+data/real_eval/
+data/scraped/
+*.pdf
+*.jpg
+*.jpeg
+*.webp
+
 # Python
 __pycache__/
 *.pyc
