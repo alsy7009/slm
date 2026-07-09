@@ -12,6 +12,11 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Grader "load & run" cell (turn-in) (2026-07-09)
+- **What:** Added a self-contained §12 cell to the training notebook: reloads the fine-tuned model (reuses the in-session model, else loads base 4-bit + the LoRA adapter from `ADAPTER_DIR`) and runs it on one circuit image (`IMAGE_PATH` + `QUESTION`). No HuggingFace account needed — a grader unzips the adapter snapshot, sets an image path, and runs.
+- **Why:** Makes the assignment submission turnkey (idea borrowed from the example notebook's merge/inference path; skipped its bnb/quant/pipeline bits since Unsloth already handles those better). Hub-push deferred (no HF account).
+- **Validated:** training notebook compiles (15 code cells); grader cell AST-parses; reuse-in-session vs fresh-load branch + graceful no-image message.
+
 ## wip — JPEG images + SAVE_TO_DRIVE flag (resilience + turn-in) (2026-07-09)
 - **What:** (1) Dataset images now saved as **JPEG** (make_record/v2 use `.jpg`; `domain_randomize` saves quality 85). ~20 KB/image vs ~300 KB PNG -> the 10k zip is ~200 MB (was ~3 GB), so download/upload between Colabs is quick. (2) New `SAVE_TO_DRIVE` flag (default **False**) in both notebooks + `DRIVE_DIR`. When True: the generation notebook copies `circuitsight_dataset.zip` to Drive; the training notebook snapshots the trained adapter to `DRIVE_DIR/models/circuitsight_qlora_<timestamp>.zip` and **keeps only the 2 most recent** (auto-prune). Survives a Colab disconnect and gives a runnable turn-in artifact.
 - **Why:** Smaller JPEGs make the zip handoff painless; Drive save protects against runtime loss and provides the deliverable. Note: recency != best — pick the turn-in model by the section-9 eval, not by which is newest or by training loss.
