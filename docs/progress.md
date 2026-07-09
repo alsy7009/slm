@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Effective batch 4 -> 8 (BATCH=2) + smoke test uses real batch (2026-07-09)
+- **What:** Training BATCH 1->2 (GRAD_ACCUM=4 => effective batch 8; ~2,800 images seen at 350 steps). The section-4 smoke test now uses per_device_train_batch_size=CFG["BATCH"] so its peak-VRAM readout reflects the real run. OOM fallback in CFG: BATCH=1, GRAD_ACCUM=8 (same effective 8, no extra VRAM).
+- **Why:** effective batch 4 was small; the smoke test showed ~5.7/15.6 GB headroom on a T4, so BATCH=2 uses parallelism for smoother gradients + more coverage. A100 can go BATCH 4-8.
+- **Validated:** both notebooks compile; effective batch = 8. Real VRAM confirmed by running section-4 in Colab (the go/no-go gate).
+
+
 ## wip — Grader "load & run" cell (turn-in) (2026-07-09)
 - **What:** Added a self-contained §12 cell to the training notebook: reloads the fine-tuned model (reuses the in-session model, else loads base 4-bit + the LoRA adapter from `ADAPTER_DIR`) and runs it on one circuit image (`IMAGE_PATH` + `QUESTION`). No HuggingFace account needed — a grader unzips the adapter snapshot, sets an image path, and runs.
 - **Why:** Makes the assignment submission turnkey (idea borrowed from the example notebook's merge/inference path; skipped its bnb/quant/pipeline bits since Unsloth already handles those better). Hub-push deferred (no HF account).
