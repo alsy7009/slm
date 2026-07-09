@@ -12,6 +12,11 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Optional connectivity feature (INCLUDE_CONNECTIVITY, off) (2026-07-09)
+- **What:** New `CONFIG["INCLUDE_CONNECTIVITY"]` (default **False**). When True, each record gains `gold_connectivity` (node -> list of component ids meeting there; node 0 = − rail, derived from the netlist) and a concise `Connections (nodes): ...` line appended to `target_output` before FINAL. Also fixed symbolic records to carry node-labeled `gold_netlist` (`_symbolic_netlist`) so connectivity works on them too.
+- **Why:** Per-junction adjacency ("which components meet here") is the junction-reading skill VLM-CAD flags as the core circuit-VLM failure — more granular than the series/parallel topology string. Off by default: it lengthens targets (dilution risk on a short run), so treat it as an A/B to run *after* v1, not a default. Grounded node-dot boxes would be a stronger follow-up.
+- **Validated:** both notebooks compile; flag stays False; with flag True, 160-record run has 0 bad — every family (incl. symbolic) gets node-labeled netlist + matching gold_connectivity + a Connections line, box counts intact, and the eval still parses the answer after the inserted line.
+
 ## wip — Rebalance mix toward symbolic + MAX_STEPS 275->350 (2026-07-09)
 - **What:** CONFIG rebalanced — BRIDGE 0.15, REACTIVE 0.35->0.25 (dc-resistor -> ~0.60), and within DC SYMBOLIC 0.35->0.45 / MIXED 0.20->0.25. Net ~37% of the set is now symbolic/mixed (was ~27%), numeric still the majority. Training MAX_STEPS 275->350 (~1,400 images seen, ~30-40 min on a T4).
 - **Why:** The real transfer eval is mostly symbolic; the seen-image mix (not dataset size) is what a ~1,400-step run learns, so the mix is the lever. Note: symbolic applies to the DC-resistor family only — reactive/bridge stay numeric (reactive-symbolic is a possible follow-up).
