@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Mid-run checkpoints (keep 2 most recent) for disconnect safety (2026-07-09)
+- **What:** Full-training cell was `save_strategy="no"` (nothing on disk until §11). Now `save_strategy="steps", save_steps=100, save_total_limit=2` into `CKPT_DIR`: if `SAVE_TO_DRIVE` -> `DRIVE_DIR/checkpoints` (auto-persists to Drive during training); else `/content/circuitsight_qlora/checkpoint-<step>/`. Keeps the 2 most recent; resumable via `resume_from_checkpoint`.
+- **Why:** the user wants to grab partial models mid-run in case the runtime disconnects; previously there was nothing to grab until training finished.
+- **Validated:** both notebooks compile. (Checkpoint writes exercised in Colab during the run.)
+
+
 ## wip — Eval: add grounding P/R/F1 + abstention precision/recall (2026-07-09)
 - **What:** `aggregate()` (base-vs-tuned §9) now also reports **grounding_recall / grounding_precision / grounding_f1** (recall = gold components localized at IoU>=0.5; precision = predicted boxes that hit) and **abstention_precision / abstention_recall** (positive class = "abstain", over all records). These auto-appear in the §9 base->tuned delta table. Existing metrics unchanged (component/reactive-type/answer/Req/intermediates/step_verified accuracy, fabrication vs honest-abstention, concept-hallucination, per-qtype).
 - **Why:** the user wanted precision/recall-style stats for the comparison; grounding and abstention are the two axes where P/R is genuinely meaningful.
