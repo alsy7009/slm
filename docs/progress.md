@@ -12,6 +12,11 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — JPEG images + SAVE_TO_DRIVE flag (resilience + turn-in) (2026-07-09)
+- **What:** (1) Dataset images now saved as **JPEG** (make_record/v2 use `.jpg`; `domain_randomize` saves quality 85). ~20 KB/image vs ~300 KB PNG -> the 10k zip is ~200 MB (was ~3 GB), so download/upload between Colabs is quick. (2) New `SAVE_TO_DRIVE` flag (default **False**) in both notebooks + `DRIVE_DIR`. When True: the generation notebook copies `circuitsight_dataset.zip` to Drive; the training notebook snapshots the trained adapter to `DRIVE_DIR/models/circuitsight_qlora_<timestamp>.zip` and **keeps only the 2 most recent** (auto-prune). Survives a Colab disconnect and gives a runnable turn-in artifact.
+- **Why:** Smaller JPEGs make the zip handoff painless; Drive save protects against runtime loss and provides the deliverable. Note: recency != best — pick the turn-in model by the section-9 eval, not by which is newest or by training loss.
+- **Validated:** both notebooks compile; JPEGs valid + legible (schematic/labels crisp at q85); a 40-image run averaged 20 KB; generate->zip->unzip round-trip loads with images resolving; flags default False; prune-to-2 unit-tested.
+
 ## wip — Optional connectivity feature (INCLUDE_CONNECTIVITY, off) (2026-07-09)
 - **What:** New `CONFIG["INCLUDE_CONNECTIVITY"]` (default **False**). When True, each record gains `gold_connectivity` (node -> list of component ids meeting there; node 0 = − rail, derived from the netlist) and a concise `Connections (nodes): ...` line appended to `target_output` before FINAL. Also fixed symbolic records to carry node-labeled `gold_netlist` (`_symbolic_netlist`) so connectivity works on them too.
 - **Why:** Per-junction adjacency ("which components meet here") is the junction-reading skill VLM-CAD flags as the core circuit-VLM failure — more granular than the series/parallel topology string. Off by default: it lengthens targets (dilution risk on a short run), so treat it as an A/B to run *after* v1, not a default. Grounded node-dot boxes would be a stronger follow-up.
