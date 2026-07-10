@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — §9c: drop monkeypatch (re-run-safe) + zip integrity check (2026-07-10)
+- **What:** §9c no longer monkeypatches `score_record`/`aggregate`. Re-running the cell wrapped a function around itself (`_orig = score_record` captured the previous wrapper) → `RecursionError`. It now just calls the §9 `evaluate` and reads the harness's built-in `answer_accuracy_by_value_mode`. Also added a zip **integrity check** (`PK` magic + `testzip()` + `adapter_config.json` present) that asserts with a clear "truncated upload / fix the path" message instead of a raw `BadZipFile`.
+- **Why:** user hit `BadZipFile` (truncated Colab upload) then `RecursionError` (re-ran the patch cell). Both are now handled: the eval is idempotent and bad zips fail loudly and clearly.
+- **Validated:** both notebooks compile (`scratch_check.py`, 18/18 code cells). Split path unchanged — `aggregate` already reports `answer_accuracy_by_value_mode` (added earlier), so no patching is needed inside the notebook.
+
+
 ## wip — Add §9c: load a saved model .zip → score val set by value mode (2026-07-10)
 - **What:** New cell (after the load-a-zip utility) that reloads the fine-tuned adapter **from an uploaded zip** and runs the numeric/symbolic/mixed answer split on the held-out synthetic val set. Self-contained: unzips + loads the model, redefines `load_image`/`solve_image` (so it works after a disconnect without re-running §4/§8), monkeypatches `score_record`/`aggregate` for the split, and calls the §9 `evaluate`. `MODEL_ZIP` + `EVAL_N_SPLIT` knobs at top.
 - **Why:** the user's Colab runtime disconnected after training; a fresh runtime loses the in-memory model, so we need a no-retrain path that reloads the downloaded model zip and re-runs the split. Needs a **GPU runtime** (4-bit load + `generate`).
