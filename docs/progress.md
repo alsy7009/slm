@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Add §9c: load a saved model .zip → score val set by value mode (2026-07-10)
+- **What:** New cell (after the load-a-zip utility) that reloads the fine-tuned adapter **from an uploaded zip** and runs the numeric/symbolic/mixed answer split on the held-out synthetic val set. Self-contained: unzips + loads the model, redefines `load_image`/`solve_image` (so it works after a disconnect without re-running §4/§8), monkeypatches `score_record`/`aggregate` for the split, and calls the §9 `evaluate`. `MODEL_ZIP` + `EVAL_N_SPLIT` knobs at top.
+- **Why:** the user's Colab runtime disconnected after training; a fresh runtime loses the in-memory model, so we need a no-retrain path that reloads the downloaded model zip and re-runs the split. Needs a **GPU runtime** (4-bit load + `generate`).
+- **Validated:** both notebooks compile (`scratch_check.py`, 18/18 code cells). Reuses the already-validated load-from-zip loader and the value-mode split (matches the §9 print).
+
+
 ## wip — Eval: answer-accuracy split by value mode (numeric/symbolic/mixed) (2026-07-10)
 - **What:** `score_record` now records each item's `value_mode`; `aggregate()` reports **`answer_accuracy_by_value_mode`** (numeric / symbolic / mixed); the §9 base->tuned run cell prints the split. Diagnostic only — no schema, dataset, or training change.
 - **Why:** base-vs-tuned showed perception axes jumped but "solving" (answer/Req/intermediates) stayed low. Symbolic answers (`R_eq = R1+R2`) require correct reading + reasoning but **no arithmetic**; numeric answers require both. Splitting answer accuracy by mode separates a *reasoning* gap from an *arithmetic* gap — if symbolic >> numeric, the model gets the physics right and only slips on in-head math (which is offloadable to a calculator), so the moat (perception + setup) is stronger than the aggregate number suggests.
