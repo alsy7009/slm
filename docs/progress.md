@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Eval: answer-accuracy split by value mode (numeric/symbolic/mixed) (2026-07-10)
+- **What:** `score_record` now records each item's `value_mode`; `aggregate()` reports **`answer_accuracy_by_value_mode`** (numeric / symbolic / mixed); the §9 base->tuned run cell prints the split. Diagnostic only — no schema, dataset, or training change.
+- **Why:** base-vs-tuned showed perception axes jumped but "solving" (answer/Req/intermediates) stayed low. Symbolic answers (`R_eq = R1+R2`) require correct reading + reasoning but **no arithmetic**; numeric answers require both. Splitting answer accuracy by mode separates a *reasoning* gap from an *arithmetic* gap — if symbolic >> numeric, the model gets the physics right and only slips on in-head math (which is offloadable to a calculator), so the moat (perception + setup) is stronger than the aggregate number suggests.
+- **Validated:** perfect-model self-check reports `answer_accuracy_by_value_mode={'numeric':1.0,...}` (symbolic/mixed None on the numeric-only self-test set); both notebooks compile; ported-eval cell validated. Re-runnable on the already-trained model (no retrain) via a monkeypatch cell.
+
+
 ## wip — Mid-run checkpoints (keep 2 most recent) for disconnect safety (2026-07-09)
 - **What:** Full-training cell was `save_strategy="no"` (nothing on disk until §11). Now `save_strategy="steps", save_steps=100, save_total_limit=2` into `CKPT_DIR`: if `SAVE_TO_DRIVE` -> `DRIVE_DIR/checkpoints` (auto-persists to Drive during training); else `/content/circuitsight_qlora/checkpoint-<step>/`. Keeps the 2 most recent; resumable via `resume_from_checkpoint`.
 - **Why:** the user wants to grab partial models mid-run in case the runtime disconnects; previously there was nothing to grab until training finished.
