@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Commit Colab run notebook (with outputs) as evidence (2026-07-10)
+- **What:** Added `src/colab_CircuitSight_training.ipynb` — the Colab working copy *with execution outputs* from the 350-step run: training loss, the base-vs-tuned metric dicts + DELTA table, and the value-mode split. It is the source of every number in `docs/results.md`.
+- **Why:** preserve the actual run outputs in-repo as reproducible evidence for the reported results. The clean canonical notebook stays `src/CircuitSight_training.ipynb`.
+- **Validated:** scanned for secrets/tokens/emails before committing (none); 436 KB, text-only outputs (no embedded images).
+
+
 ## wip — Add docs/results.md (evaluation results write-up) (2026-07-10)
 - **What:** New `docs/results.md` consolidating the measured results for the fine-tuned adapter `circuitsight_qlora_final_20260709_1.zip`. Run A (base→tuned, n=24): component 0.167→0.958, reactive-type 0.333→1.000, grounding 0.000→0.842, honest-abstention 0.000→1.000, concept-declared 0.000→0.833; solving Req 0.000→0.182, answer 0.000→0.087, step-verified 0.000→0.087. Run B (value-mode split, n=36): numeric 0.000/14, symbolic 0.308/13, mixed 0.333/6. Includes a plain-language metric glossary, full description of the held-out synthetic val set (500 records; families, value modes incl. training mix 5271/2750/1479, question types, abstention), per-run sample sizes/composition, decoding settings, training details (loss ≈0.16, A100), the key finding (arithmetic gap, not a reasoning gap), caveats, and how to reproduce.
 - **Why:** the user needs a self-contained results doc a reader unfamiliar with the test set can understand, naming the exact model artifact.
