@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Add docs/results.md (evaluation results write-up) (2026-07-10)
+- **What:** New `docs/results.md` consolidating the measured results for the fine-tuned adapter `circuitsight_qlora_final_20260709_1.zip`: Run A (base vs. tuned, n=24 — component 0.167→0.958, reactive-type 0.333→1.000, Req 0→0.182, answer/step-verified 0.087) and Run B (value-mode split, n=36 — numeric 0.000/14, symbolic 0.308/13, mixed 0.333/6). Includes a plain-language metric glossary, a full description of the held-out synthetic val set (families, value modes, question types, abstention), sample sizes/composition per run, decoding settings, the key finding (arithmetic gap, not a reasoning gap), caveats, and how to reproduce.
+- **Why:** the user needs a self-contained results doc a reader unfamiliar with the test set can understand, naming the exact model artifact.
+- **Validated:** numbers taken from the actual run outputs (Run A partial-transcribed from the prior session; Run B from today's §9c run). Grounding/honesty/concept sub-metrics from Run A were not transcribed and are flagged as re-runnable rather than invented.
+
+
 ## wip — §9c: drop monkeypatch (re-run-safe) + zip integrity check (2026-07-10)
 - **What:** §9c no longer monkeypatches `score_record`/`aggregate`. Re-running the cell wrapped a function around itself (`_orig = score_record` captured the previous wrapper) → `RecursionError`. It now just calls the §9 `evaluate` and reads the harness's built-in `answer_accuracy_by_value_mode`. Also added a zip **integrity check** (`PK` magic + `testzip()` + `adapter_config.json` present) that asserts with a clear "truncated upload / fix the path" message instead of a raw `BadZipFile`.
 - **Why:** user hit `BadZipFile` (truncated Colab upload) then `RecursionError` (re-ran the patch cell). Both are now handled: the eval is idempotent and bad zips fail loudly and clearly.
