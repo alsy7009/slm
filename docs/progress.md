@@ -12,10 +12,17 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
-## wip — Add §9d: tool-offloaded solving (model sets up, sympy computes) (2026-07-10)
-- **What:** New §9d cells. The model reads components + their values and emits the answer as a **formula** in the component labels (`PLAN: {expression, values, ...}`); a deterministic **sympy** `tool_compute` substitutes the readings and evaluates the number. Runs numeric val problems raw (model computes) vs offloaded (tool computes) for a head-to-head. Targets the arithmetic gap (numeric 0%) identified by the value-mode split.
-- **Why:** the value-mode split proved the weakness is arithmetic, not reasoning — so offloading the arithmetic to a calculator should lift numeric accuracy toward the symbolic level, without retraining. Plays to the model's strengths (perception + setup).
-- **Validated:** tool logic prototyped/validated in `scratch_offload.py` (gitignored) — 6/6 compute cases correct (series/parallel/power/unit-strings/pre-substituted/case-insensitive), 5/5 unsafe-or-missing cases correctly abstain (incl. an `__import__` injection attempt and unread values; only component labels with a read value may appear as variables). Both notebooks compile (`scratch_check.py`, 19 code cells). Model-generation path runs in Colab.
+## wip — Tool-offload as a RETRAIN feature: bake PLAN into targets + train for it (2026-07-10)
+- **What:** Made tool-offload a trained capability instead of a zero-shot gamble. **Data-gen:** new `CONFIG["INCLUDE_PLAN"]=True`; `plan_of()` derives the answer as a FORMULA in the component labels (via a fully-symbolic solve of the same ladder) + the numeric readings, and `make_record` appends a `PLAN: {expression, values, ...}` line to every legible dc-resistor target (numeric/symbolic/mixed; not reactive/bridge/abstain). **Training:** `INSTRUCTION` now asks for the `PLAN` line after `FINAL` for resistor networks. **§9d** rewritten to a single generation → `FINAL` (model's arithmetic) vs `PLAN`→sympy (tool), head-to-head on numeric resistor problems; warns if the model wasn't PLAN-trained.
+- **Why:** the value-mode split proved the gap is arithmetic, not reasoning. Training the model to emit the setup as a formula (its strength) and letting sympy do the arithmetic (a solved problem) should lift numeric toward the symbolic level — the moat framing, made real. Retraining removes the format-compliance gamble of the earlier zero-shot §9d.
+- **Note:** `INCLUDE_PLAN` and the `INSTRUCTION` PLAN sentence are coupled — keep both on (default) or both off, else train/prompt mismatch.
+- **Validated:** oracle in `scratch_offload.py` — `plan_of`→sympy reproduces the numpy gold answer **400/400 for numeric, symbolic, AND mixed**; tool 6/6 compute + safe-abstain on injection/missing. End-to-end on the **notebook's** `make_record` (INCLUDE_PLAN=True): PLAN present in every dc target (symbolic 108/108, numeric 68/68, mixed 52/52), **0 mismatches vs gold**, none leaking into reactive/bridge. Both notebooks compile (19 code cells).
+
+
+## wip — Add §9d: tool-offloaded solving (zero-shot, pre-retrain) (2026-07-10)
+- **What:** New §9d cells (later reworked into the retrain feature above). The model reads components + values and emits the answer as a **formula** (`PLAN`); a deterministic **sympy** `tool_compute` substitutes the readings and evaluates the number.
+- **Why:** the value-mode split proved the weakness is arithmetic, not reasoning — offloading the arithmetic to a calculator should lift numeric accuracy toward the symbolic level.
+- **Validated:** tool logic in `scratch_offload.py` — compute cases correct; unsafe/missing cases (incl. an `__import__` injection attempt) correctly abstain.
 
 
 ## wip — Commit Colab run notebook (with outputs) as evidence (2026-07-10)
