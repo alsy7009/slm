@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Add §9d: tool-offloaded solving (model sets up, sympy computes) (2026-07-10)
+- **What:** New §9d cells. The model reads components + their values and emits the answer as a **formula** in the component labels (`PLAN: {expression, values, ...}`); a deterministic **sympy** `tool_compute` substitutes the readings and evaluates the number. Runs numeric val problems raw (model computes) vs offloaded (tool computes) for a head-to-head. Targets the arithmetic gap (numeric 0%) identified by the value-mode split.
+- **Why:** the value-mode split proved the weakness is arithmetic, not reasoning — so offloading the arithmetic to a calculator should lift numeric accuracy toward the symbolic level, without retraining. Plays to the model's strengths (perception + setup).
+- **Validated:** tool logic prototyped/validated in `scratch_offload.py` (gitignored) — 6/6 compute cases correct (series/parallel/power/unit-strings/pre-substituted/case-insensitive), 5/5 unsafe-or-missing cases correctly abstain (incl. an `__import__` injection attempt and unread values; only component labels with a read value may appear as variables). Both notebooks compile (`scratch_check.py`, 19 code cells). Model-generation path runs in Colab.
+
+
 ## wip — Commit Colab run notebook (with outputs) as evidence (2026-07-10)
 - **What:** Added `src/colab_CircuitSight_training.ipynb` — the Colab working copy *with execution outputs* from the 350-step run: training loss, the base-vs-tuned metric dicts + DELTA table, and the value-mode split. It is the source of every number in `docs/results.md`.
 - **Why:** preserve the actual run outputs in-repo as reproducible evidence for the reported results. The clean canonical notebook stays `src/CircuitSight_training.ipynb`.
