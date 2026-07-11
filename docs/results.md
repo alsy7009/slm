@@ -1,6 +1,6 @@
 # CircuitSight — Evaluation Results
 
-*Last updated 2026-07-10. All numbers are from actual runs (captured from the Colab run outputs); see "How to reproduce".*
+*Last updated 2026-07-11. All numbers are from actual runs (captured from the Colab run outputs); see "How to reproduce". Two models are reported: **v1** (`…20260709_1`) and **v2** (`…20260710_1`, PLAN-retrained for tool-offload) — see "Update — Model v2".*
 
 ## TL;DR
 
@@ -17,7 +17,7 @@ correct setup), with the arithmetic offloadable to a calculator.
 
 ---
 
-## Model evaluated
+## Model evaluated (v1)
 
 | | |
 |---|---|
@@ -172,6 +172,36 @@ symbolic level.
 
 **Caveats:** samples are small (abstention rests on 1 case in Run A); symbolic accuracy is 31%, not
 near-perfect, so the claim is *relative* (reasoning ≫ arithmetic), not "reasoning is solved."
+
+---
+
+## Update (2026-07-11) — Model v2: PLAN-retrained (`circuitsight_qlora_final_20260710_1`)
+
+After making tool-offload a **trained** capability — dataset regenerated with `INCLUDE_PLAN=True` so each legible resistor target ends with a `PLAN` line (the answer as a formula in the component labels + the values read) — we retrained and re-ran the base-vs-tuned eval on **n=60** held-out records (5 abstention, 11 reactive).
+
+**Reliable base→tuned gains (perception, intermediates, concepts, honesty):**
+
+| Metric | Base | Tuned (v2) | Δ |
+|---|---|---|---|
+| component_accuracy | 0.233 | 0.850 | +0.617 |
+| reactive_type_accuracy | 0.545 | 1.000 | +0.455 |
+| grounding_recall | 0.000 | 0.799 | +0.799 |
+| Req_accuracy | 0.000 | 0.537 | +0.537 |
+| intermediates_accuracy | 0.000 | 0.250 | +0.250 |
+| concept_declared_rate | 0.017 | 0.917 | +0.900 |
+| concept_hallucination_rate | 0.000 | 0.036 | +0.036 † |
+| honest_abstention_rate | 0.200 | 0.800 | +0.600 |
+| abstention_recall | 0.200 | 0.800 | +0.600 |
+| abstention_precision | 0.250 | 0.400 | +0.150 |
+
+† base ≈ 0 only because the base model rarely declares any concept (declared_rate 0.017), so it can't "hallucinate" one; the tuned model declares concepts on 92% of items and cites an unneeded one only 3.6% of the time.
+
+**v2 vs v1 (directional — different sample sizes and a different regenerated val split, so not apples-to-apples):**
+- **Better in v2:** equivalent-resistance `Req_accuracy` **0.18 → 0.54** (the biggest change — v2 gets the key intermediate right far more often), `intermediates` 0.18 → 0.25, `concept_declared` 0.83 → 0.92, `concept_hallucination` 0.05 → 0.04 (lower is better).
+- **Slightly lower in v2:** `component_accuracy` 0.96 → 0.85, `grounding` 0.84 → 0.80 — most likely the larger/harder regenerated val set (v2's *base* is also different) plus a small dilution from the added PLAN line; `reactive_type` stayed perfect (1.00).
+- **Abstention:** v1's figures rested on a single abstain case; v2's 5 cases are more reliable. v2 catches illegible values well (recall 0.80) but **over-abstains** somewhat (precision 0.40) — a calibration item to watch.
+
+**Raw answer accuracy for v2 is intentionally omitted here — it was mis-measured.** The new `PLAN:` line (printed after `FINAL:`) broke the eval's *greedy* `FINAL` parser: it swallowed the PLAN line, the JSON parse failed, and every dc-resistor answer scored 0 (the misleading `answer_accuracy 0.087→0.018`, `symbolic 0.308→0.000`, `mixed 0.333→0.000` in that run). This is a **parser bug, not a model regression** — now fixed (non-greedy `FINAL` match). Re-run §9 and §9d on the v2 model for true numbers; **§9d tool-offload** (model emits the formula, sympy computes the arithmetic) is the intended payoff and is still pending.
 
 ---
 
