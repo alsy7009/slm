@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Clean eval-only notebook (CircuitSight_training_20260710.ipynb) (2026-07-11)
+- **What:** Rebuilt the downloaded `src/CircuitSight_training_20260710.ipynb` as a lean **eval-only** notebook (16 cells): install -> imports -> Config -> load dataset from Drive -> load model from Drive -> §9 harness -> §9 (base vs tuned) -> §9d (tool-offload). Dropped all training/save/download/duplicate cells.
+- **Why:** the downloaded copy mixed canonical + hand-pasted cells: a stale §9 harness with the GREEDY `parse_final` (bug) plus a separate patch cell, `cap400` in places, and two §9d cells — correctness depended on paste/run order.
+- **Validated:** every reused cell copied verbatim from the canonical notebook after asserting it is the correct version (non-greedy `parse_final`, 896 cap, Drive `DATASET_ZIP`/`MODEL_ZIP`, `EVAL_N=30`, `OFFLOAD_N=15`); all 8 code cells compile.
+
+
 ## wip — Raise eval generation cap 400 -> 896 (PLAN was being truncated) (2026-07-11)
 - **What:** `max_new_tokens` 400 -> 896 in all eval/inference generators (§8 solve_image, §9c, §9d, the Drive-load cell, grader cells).
 - **Why:** §9d showed tool (0.05) < raw (0.15) with mostly `None` outputs. Root cause: PLAN-retrained targets run median ~329 / p95 ~573 / max ~751 tokens, and the `PLAN` line is LAST, so a 400-token cap truncated it (and `FINAL` on big circuits) -> `tool=None`. `max_new_tokens` is a ceiling (outputs stop at EOS), so short circuits are unaffected; only long ones get room to finish.
