@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Raise eval generation cap 400 -> 896 (PLAN was being truncated) (2026-07-11)
+- **What:** `max_new_tokens` 400 -> 896 in all eval/inference generators (§8 solve_image, §9c, §9d, the Drive-load cell, grader cells).
+- **Why:** §9d showed tool (0.05) < raw (0.15) with mostly `None` outputs. Root cause: PLAN-retrained targets run median ~329 / p95 ~573 / max ~751 tokens, and the `PLAN` line is LAST, so a 400-token cap truncated it (and `FINAL` on big circuits) -> `tool=None`. `max_new_tokens` is a ceiling (outputs stop at EOS), so short circuits are unaffected; only long ones get room to finish.
+- **Validated:** measured target lengths on the notebook `make_record` (INCLUDE_PLAN) to size the cap; both notebooks compile. Re-run §9d/§9 to get true numbers.
+
+
 ## wip — Add "load model from Google Drive" cell at the top of §9 (2026-07-11)
 - **What:** New cell right under the §9 header that mounts Drive, loads the fine-tuned adapter from `MODEL_ZIP` (defaults to `MyDrive/slm_project/models/…`), integrity-checks the zip, and (re)defines `load_image`/`solve_image` — so §9 / §9d run in a fresh runtime without re-running §4/§8. Skippable if the model is already in memory.
 - **Why:** sessions keep ending; the existing zip loaders defaulted to `/content` paths and lived in the utilities area, so there was no obvious "load the model to evaluate from Drive" step at the start of the eval section.
