@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Add "load model from Google Drive" cell at the top of §9 (2026-07-11)
+- **What:** New cell right under the §9 header that mounts Drive, loads the fine-tuned adapter from `MODEL_ZIP` (defaults to `MyDrive/slm_project/models/…`), integrity-checks the zip, and (re)defines `load_image`/`solve_image` — so §9 / §9d run in a fresh runtime without re-running §4/§8. Skippable if the model is already in memory.
+- **Why:** sessions keep ending; the existing zip loaders defaulted to `/content` paths and lived in the utilities area, so there was no obvious "load the model to evaluate from Drive" step at the start of the eval section.
+- **Validated:** both notebooks compile (20 code cells). Loader mirrors the validated §9c/loadzip loader.
+
+
 ## wip — Fix greedy FINAL parser (PLAN line broke it) + results.md v2 model (2026-07-11)
 - **What:** (1) `parse_final` was greedy + DOTALL (`FINAL:\s*(\{.*\})`), so on the PLAN-retrained model's output (`FINAL: {…}\nPLAN: {…}`) it swallowed the PLAN line, the JSON parse failed, and every dc-resistor answer scored 0. Fixed to non-greedy, no-DOTALL (`\{.*?\}`) in the §9 harness + `scratch_eval`. (2) Added the **Model v2** (`…20260710_1`, PLAN-retrained, n=60) results to `docs/results.md`: reliable base→tuned gains (component 0.23→0.85, reactive-type 0.55→1.00, grounding 0.00→0.80, **Req 0.00→0.54**, intermediates 0.00→0.25, concept-declared 0.02→0.92, honest-abstention 0.20→0.80) and a caveated v1-vs-v2 comparison.
 - **Why:** the v2 run showed `answer_accuracy 0.087→0.018` and `symbolic 0.308→0.000`, which looked like a regression but was a **measurement artifact** of the new PLAN line breaking the FINAL parser — not a model change. v2 actually improved the key reasoning intermediate (Req 0.18→0.54).
