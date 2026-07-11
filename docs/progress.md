@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — _20260710 notebook: keep full pipeline, verify eval path (2026-07-11)
+- **What:** Reverted `CircuitSight_training_20260710.ipynb` from the lean eval-only build back to the **full pipeline** (training + eval, 40 cells) — a clean, outputs-stripped copy of the canonical notebook — after asserting the eval path is correct (non-greedy `parse_final`, 896 cap everywhere / no `cap400`, Drive `DATASET_ZIP`/`MODEL_ZIP`, `EVAL_N=30`, `OFFLOAD_N=15`, load-model-from-Drive cell present).
+- **Why:** user wants the whole pipeline retained but will only run the eval cells.
+- **Validated:** all 20 code cells compile; eval-path assertions pass.
+
+
 ## wip — Clean eval-only notebook (CircuitSight_training_20260710.ipynb) (2026-07-11)
 - **What:** Rebuilt the downloaded `src/CircuitSight_training_20260710.ipynb` as a lean **eval-only** notebook (16 cells): install -> imports -> Config -> load dataset from Drive -> load model from Drive -> §9 harness -> §9 (base vs tuned) -> §9d (tool-offload). Dropped all training/save/download/duplicate cells.
 - **Why:** the downloaded copy mixed canonical + hand-pasted cells: a stale §9 harness with the GREEDY `parse_final` (bug) plus a separate patch cell, `cap400` in places, and two §9d cells — correctness depended on paste/run order.
