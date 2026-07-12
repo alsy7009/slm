@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — §9e judge switched to OpenAI (vision GPT-4o) + preflight (2026-07-11)
+- **What:** Rewrote §9e to use the **OpenAI** SDK (`OPENAI_API_KEY`, `gpt-4o` vision via `chat.completions` with a base64 `image_url`) instead of the Anthropic SDK, in both notebooks. Added a **preflight ping** that fails fast on a bad key/model. Same rubric, same independent/blind scoring, same base-vs-tuned table + error analysis.
+- **Why:** user has an OpenAI key, not an Anthropic one — and an OpenAI key can't authenticate against the Anthropic API regardless of the variable name (earlier run 401'd on every call).
+- **Validated:** both notebooks compile; offline checks pass (JPEG data-URI shape, JSON parse). Key handling unchanged (Secrets/getpass, never printed).
+
+
 ## wip — Add §9e: LLM-as-judge (vision Claude, 4-dim rubric) (2026-07-11)
 - **What:** New §9e cell in both notebooks. A **vision-capable Claude** scores base vs tuned outputs **0-2** on the brief's Appendix A dimensions — spec adherence, robustness, task quality, and **consistency (internal self-consistency)** — judging each output independently (blind) on the synthetic val set. Prints a mean-per-dimension base/tuned/delta table + an error-analysis list of tuned items scoring <2.
 - **Why:** LLM-as-judge is a required graded deliverable; it measures the holistic axes the mechanical eval (§9) structurally cannot (clarity, spec-adherence in spirit, robustness, self-consistency).
