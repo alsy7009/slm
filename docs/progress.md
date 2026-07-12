@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — §9e judge via TrueFoundry gateway (the chat credential) (2026-07-12)
+- **What:** Reworked §9e to call the **TrueFoundry LLM gateway** (the credential that powers Claude Code) instead of a provider directly: Anthropic SDK with `base_url=TFY_BASE_URL` + **Bearer** `auth_token=TFY_TOKEN`. Set `JUDGE_MODEL` to a gateway-served model; preflight ping fails fast. Repo keeps a **placeholder** `TFY_BASE_URL` (internal gateway hostname not committed); token via Colab Secret, never printed.
+- **Why:** the `AQ.`/`tfy` key is a TrueFoundry **gateway** token (Bearer), not a direct Anthropic/OpenAI/Gemini API key — which is why every direct-provider attempt 401'd or hit a 0-quota. The project is meant to use the gateway that powers the chat (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`).
+- **Validated:** both notebooks compile (21 code cells); anthropic image-block + JSON parse validated earlier. Auth confirmed live in Colab via the preflight.
+
+
 ## wip — §9e judge -> Google Gemini (free tier, vision) via OpenAI-compat (2026-07-11)
 - **What:** Switched §9e to **Google Gemini** (`gemini-2.0-flash`, vision) using Gemini's **OpenAI-compatible endpoint** (base_url on the OpenAI SDK), so the judge code is unchanged bar the client init + model. Key = free `GEMINI_API_KEY` (aistudio.google.com), Colab Secrets/getpass, never printed; preflight ping fails fast. Both notebooks.
 - **Why:** the user has neither a valid Anthropic API key (the "chat" credential is a subscription/OAuth, not an `sk-ant-api03` API key) nor a funded OpenAI key. Gemini's free tier unblocks the LLM-as-judge deliverable with no billing.
