@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CircuitSight — real-eval labeler</title>
+<style>
+  body{font:14px/1.45 system-ui,sans-serif;margin:0;color:#111;background:#f6f7f9}
+  header{background:#1f2937;color:#fff;padding:10px 16px}
+  header h1{font-size:16px;margin:0}
+  header p{margin:4px 0 0;font-size:12px;color:#cbd5e1}
+  .wrap{display:flex;gap:16px;padding:16px;align-items:flex-start;flex-wrap:wrap}
+  .col{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px}
+  .left{flex:1 1 660px;min-width:520px}
+  .right{flex:1 1 380px;min-width:340px}
+  #stage{position:relative;display:inline-block;border:1px solid #d1d5db;background:#fafafa;touch-action:none;cursor:crosshair}
+  #img{display:block;max-width:100%}
+  #ov{position:absolute;left:0;top:0}
+  label{display:block;font-weight:600;margin:10px 0 3px;font-size:12px;color:#374151}
+  .hint{font-weight:400;color:#6b7280;font-size:11px}
+  input[type=text],textarea,select{width:100%;box-sizing:border-box;padding:6px;border:1px solid #d1d5db;border-radius:5px;font:13px system-ui}
+  textarea{resize:vertical}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:8px 12px;font-weight:600;cursor:pointer}
+  button.sec{background:#6b7280}
+  button.mini{padding:3px 7px;font-size:12px;background:#ef4444}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}
+  th,td{border:1px solid #e5e7eb;padding:3px 5px;text-align:left}
+  td input{width:100%;border:0;padding:2px}
+  #out{width:100%;height:180px;font:12px ui-monospace,monospace;white-space:pre;box-sizing:border-box}
+  .box-badge{position:absolute;background:#dc2626;color:#fff;font:11px monospace;padding:0 3px;border-radius:2px}
+  .note{background:#fffbeb;border:1px solid #fde68a;padding:8px;border-radius:6px;font-size:12px;margin:8px 0}
+  code{background:#eef2ff;padding:1px 4px;border-radius:3px}
+</style>
+</head>
+<body>
+<header>
+  <h1>CircuitSight — real-eval labeler</h1>
+  <p>Load a circuit image → drag boxes over each component → fill the fields → copy the JSONL line into <code>data/real_eval/labeled.jsonl</code>. Boxes are exported as <b>0–1000 normalized</b> coords (matches the dataset schema). Everything runs locally in your browser.</p>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: image + drawing -->
+  <div class="col left">
+    <input type="file" id="file" accept="image/*">
+    <span class="hint">&nbsp; drag on the image to draw a box; it's assigned the "next id" below, then auto-increments.</span>
+    <div style="margin:8px 0">
+      <label style="display:inline-block">Next box id
+        <span class="hint">— V1 (source), R1.. (resistor), C1 (capacitor), L1 (inductor), SW (switch)</span></label>
+      <input type="text" id="nextid" value="R1" style="width:90px;display:inline-block">
+      <button class="sec" id="undo" type="button">Undo last box</button>
+      <button class="sec" id="clear" type="button">Clear boxes</button>
+    </div>
+    <div id="stage"><img id="img" alt="load an image"><canvas id="ov"></canvas></div>
+    <table id="boxtbl"><thead><tr><th>id</th><th>x0</th><th>y0</th><th>x1</th><th>y1</th><th></th></tr></thead><tbody></tbody></table>
+    <p class="hint">Component inventory (auto-derived from box ids): <b id="inv">—</b></p>
+  </div>
+
+  <!-- RIGHT: record fields -->
+  <div class="col right">
+    <label>image <span class="hint">— path relative to data/real_eval/ (auto-filled from the file; edit to the real subpath)</span></label>
+    <input type="text" id="f_image" placeholder="figures_p2/cropped/ap24-frq-p2_p11.png">
+
+    <div class="row">
+      <div><label>family</label>
+        <select id="f_family"><option>dc_resistor</option><option>reactive</option><option>bridge</option></select></div>
+      <div><label>question_type</label>
+        <select id="f_qtype"><option>topology</option><option>components</option><option>current</option><option>voltage</option><option>power</option><option>resistance</option><option>charge</option><option>energy</option></select></div>
+    </div>
+
+    <label>question <span class="hint">— pick ONE in-scope sub-question (steady-state/t=0/R_eq/branch current/ID). Avoid the "write the differential equation" parts.</span></label>
+    <textarea id="f_q" rows="2" placeholder="Identify the resistors and state how they are connected (series/parallel)."></textarea>
+
+    <label>gold_topology <span class="hint">— series/parallel/bridge structure, e.g. R1 + ( R2 || (R3 + R4) )</span></label>
+    <input type="text" id="f_topo" placeholder="R1 + ( R2 || (R3 + R4) )">
+
+    <label>answer <span class="hint">— check "perception-only" if the values are symbolic / no numeric answer (scores components+grounding+topology only)</span></label>
+    <div class="row" style="align-items:center">
+      <label style="font-weight:400"><input type="checkbox" id="f_perc" checked> perception-only (gold_answer = null)</label>
+      <label style="font-weight:400"><input type="checkbox" id="f_abstain"> abstain (illegible value)</label>
+    </div>
+    <div id="answerbox" style="display:none">
+      <div class="row">
+        <div><label>quantity</label>
+          <select id="f_quant"><option>current</option><option>voltage</option><option>power</option><option>resistance</option><option>charge</option><option>energy</option></select></div>
+        <div><label>target_id <span class="hint">component</span></label><input type="text" id="f_target" placeholder="R2"></div>
+      </div>
+      <div class="row">
+        <div><label>value <span class="hint">number (from the scoring guide)</span></label><input type="text" id="f_val" placeholder="1.2"></div>
+        <div><label>unit</label><input type="text" id="f_unit" placeholder="A"></div>
+      </div>
+    </div>
+
+    <label>gold_values <span class="hint">— optional, for step-verification. R_eq and/or branch currents like R1:0.5,R2:0.3</span></label>
+    <div class="row">
+      <div><input type="text" id="f_req" placeholder="R_eq e.g. 550"></div>
+      <div><input type="text" id="f_bc" placeholder="branch currents e.g. R1:0.02,R2:0.01"></div>
+    </div>
+
+    <label>source <span class="hint">— provenance</span></label>
+    <input type="text" id="f_source" placeholder="AP Physics 2 2024 FRQ (p.11)">
+    <label>license</label>
+    <input type="text" id="f_license" value="© College Board (non-commercial research)">
+    <label>notes</label>
+    <input type="text" id="f_notes" placeholder="Symbolic values -> perception scoring.">
+
+    <div style="margin-top:12px">
+      <button id="gen" type="button">Generate JSONL line ▶</button>
+      <button class="sec" id="copy" type="button">Copy</button>
+    </div>
+    <div class="note">Add it: paste the copied line as a <b>new line</b> in <code>data/real_eval/labeled.jsonl</code>. One record per line. Re-check it in the <code>overlays/</code> QA step (or just re-load here to eyeball the boxes).</div>
+    <textarea id="out" spellcheck="false" placeholder="the JSON record appears here"></textarea>
+  </div>
+</div>
+
+<script>
+const img=document.getElementById('img'), ov=document.getElementById('ov'), stage=document.getElementById('stage');
+let boxes=[];           // {id, x0,y0,x1,y1}  (normalized 0-1000, ints)
+let drag=null;          // {sx,sy} in display px
+
+document.getElementById('file').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  document.getElementById('f_image').value = f.name;   // edit to the real relative subpath
+  const r=new FileReader();
+  r.onload=()=>{ img.onload=()=>{ ov.width=img.clientWidth; ov.height=img.clientHeight; boxes=[]; redraw(); }; img.src=r.result; };
+  r.readAsDataURL(f);
+});
+window.addEventListener('resize', ()=>{ if(img.src){ ov.width=img.clientWidth; ov.height=img.clientHeight; redraw(); }});
+
+function toNorm(px,py){ return [Math.round(px/img.clientWidth*1000), Math.round(py/img.clientHeight*1000)]; }
+function bumpId(id){ const m=id.match(/^([A-Za-z]+)(\d*)$/); if(!m||m[2]==='') return id; return m[1]+(parseInt(m[2])+1); }
+
+function pos(e){ const r=stage.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return [t.clientX-r.left, t.clientY-r.top]; }
+stage.addEventListener('pointerdown', e=>{ if(!img.src) return; const [x,y]=pos(e); drag={sx:x,sy:y,cx:x,cy:y}; });
+stage.addEventListener('pointermove', e=>{ if(!drag) return; const [x,y]=pos(e); drag.cx=x; drag.cy=y; redraw(); });
+stage.addEventListener('pointerup', e=>{
+  if(!drag) return;
+  const x0=Math.min(drag.sx,drag.cx), y0=Math.min(drag.sy,drag.cy), x1=Math.max(drag.sx,drag.cx), y1=Math.max(drag.sy,drag.cy);
+  drag=null;
+  if(x1-x0<6||y1-y0<6){ redraw(); return; }                 // ignore tiny/accidental drags
+  const [nx0,ny0]=toNorm(x0,y0), [nx1,ny1]=toNorm(x1,y1);
+  const idf=document.getElementById('nextid');
+  boxes.push({id:idf.value.trim()||('R'+(boxes.length+1)), x0:nx0,y0:ny0,x1:nx1,y1:ny1});
+  idf.value=bumpId(idf.value.trim());
+  syncTable(); redraw();
+});
+
+function normToPx(v,dim){ return v/1000*dim; }
+function redraw(){
+  const c=ov.getContext('2d'); c.clearRect(0,0,ov.width,ov.height);
+  document.querySelectorAll('.box-badge').forEach(b=>b.remove());
+  c.lineWidth=2; c.strokeStyle='#dc2626'; c.font='12px monospace';
+  boxes.forEach(b=>{
+    const x=normToPx(b.x0,ov.width), y=normToPx(b.y0,ov.height), w=normToPx(b.x1-b.x0,ov.width), h=normToPx(b.y1-b.y0,ov.height);
+    c.strokeRect(x,y,w,h);
+    const badge=document.createElement('div'); badge.className='box-badge'; badge.textContent=b.id;
+    badge.style.left=(x+1)+'px'; badge.style.top=Math.max(0,y-14)+'px'; stage.appendChild(badge);
+  });
+  if(drag){ c.strokeStyle='#2563eb'; c.setLineDash([4,3]);
+    c.strokeRect(Math.min(drag.sx,drag.cx),Math.min(drag.sy,drag.cy),Math.abs(drag.cx-drag.sx),Math.abs(drag.cy-drag.sy)); c.setLineDash([]); }
+}
+function syncTable(){
+  const tb=document.querySelector('#boxtbl tbody'); tb.innerHTML='';
+  boxes.forEach((b,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><input value="${b.id}" data-i="${i}" data-k="id"></td>`+
+      ['x0','y0','x1','y1'].map(k=>`<td><input value="${b[k]}" data-i="${i}" data-k="${k}" style="width:44px"></td>`).join('')+
+      `<td><button class="mini" data-del="${i}">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',ev=>{
+    const i=+ev.target.dataset.i,k=ev.target.dataset.k; boxes[i][k]= k==='id'?ev.target.value : (parseInt(ev.target.value)||0); redraw(); updateInv();
+  }));
+  tb.querySelectorAll('button[data-del]').forEach(btn=>btn.addEventListener('click',ev=>{ boxes.splice(+ev.target.dataset.del,1); syncTable(); redraw(); updateInv(); }));
+  updateInv();
+}
+function inventory(){
+  const inv={voltage_source:0,resistor:0,capacitor:0,inductor:0};
+  boxes.forEach(b=>{ const c=b.id.trim().toUpperCase()[0];
+    if(c==='V') inv.voltage_source++; else if(c==='R') inv.resistor++; else if(c==='C') inv.capacitor++; else if(c==='L') inv.inductor++; });
+  Object.keys(inv).forEach(k=>{ if(!inv[k]) delete inv[k]; });
+  return inv;
+}
+function updateInv(){ document.getElementById('inv').textContent=JSON.stringify(inventory()); }
+
+document.getElementById('undo').onclick=()=>{ boxes.pop(); syncTable(); redraw(); };
+document.getElementById('clear').onclick=()=>{ boxes=[]; syncTable(); redraw(); };
+function toggleAnswer(){ document.getElementById('answerbox').style.display=document.getElementById('f_perc').checked?'none':'block'; }
+document.getElementById('f_perc').onchange=toggleAnswer; toggleAnswer();
+
+document.getElementById('gen').onclick=()=>{
+  const perc=document.getElementById('f_perc').checked, abstain=document.getElementById('f_abstain').checked;
+  const gb={}; boxes.forEach(b=>gb[b.id.trim()]=[b.x0,b.y0,b.x1,b.y1]);
+  let gold_answer=null;
+  if(!perc && !abstain){
+    const v=document.getElementById('f_val').value.trim();
+    gold_answer={quantity:document.getElementById('f_quant').value, target_id:document.getElementById('f_target').value.trim()||null,
+      value: v===''?null:(isNaN(+v)?v:+v), unit:document.getElementById('f_unit').value.trim(), symbolic:false};
+  }
+  const gv={}; const req=document.getElementById('f_req').value.trim();
+  if(req!=='') gv.R_eq = isNaN(+req)?req:+req;
+  const bc=document.getElementById('f_bc').value.trim();
+  if(bc!==''){ gv.branch_currents={}; bc.split(',').forEach(p=>{ const [k,val]=p.split(':'); if(k&&val!==undefined) gv.branch_currents[k.trim()]=isNaN(+val)?val.trim():+val; }); }
+  const rec={
+    image:document.getElementById('f_image').value.trim(),
+    question:document.getElementById('f_q').value.trim(),
+    family:document.getElementById('f_family').value,
+    question_type:document.getElementById('f_qtype').value,
+    gold_components:inventory(),
+    gold_topology:document.getElementById('f_topo').value.trim(),
+    gold_answer:gold_answer,
+    gold_values:gv,
+    gold_boxes:gb,
+    abstain:abstain,
+    source:document.getElementById('f_source').value.trim(),
+    license:document.getElementById('f_license').value.trim(),
+    notes:document.getElementById('f_notes').value.trim()
+  };
+  document.getElementById('out').value=JSON.stringify(rec);
+};
+document.getElementById('copy').onclick=()=>{ const o=document.getElementById('out'); o.select(); navigator.clipboard.writeText(o.value); };
+</script>
+</body>
+</html>

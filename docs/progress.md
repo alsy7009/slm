@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Add tools/circuit_labeler.html (browser real-eval labeler) (2026-07-12)
+- **What:** Self-contained HTML tool (no install/server): load a circuit image, **drag bounding boxes** (auto-assigned V1/R1/C1/L1/SW ids, auto-incrementing), fill all record fields (family, question_type, question, topology, perception-only vs numeric answer, optional gold_values, source/license/notes), and it exports a **`labeled.jsonl` line** in the exact real_eval schema. Boxes are emitted as **0–1000 normalized** coords; component inventory auto-derived from box ids.
+- **Why:** the real-eval gold must stay **authoritative hand-labels** (human draws the boxes). This makes that fast, and matches `make_real_eval_record` so records drop straight into `data/real_eval/labeled.jsonl`.
+- **Validated:** `node --check` on the embedded JS passes; brackets balanced. Schema fields verified against the 8 existing labeled records.
+
+
 ## wip — BrainLift: add Outcome section (did data->behavior hold?) (2026-07-12)
 - **What:** Added an **Outcome** section to Part 2 of `behavior_spec_brainlift.md` — the brief's required "whether data->behavior held, with evidence." Maps each result to a Spiky POV: grounding (recall 0->~0.80, reactive-type ~0.5->1.0), honesty (fabrication ~0.3->0, honest-abstention ~0->~0.8-1.0), step-verification (Req 0->~0.5), the independent LLM-judge (spec 0->0.92, robustness 0->0.92, task 0.08->1.08, consistency 0->1.08), and an honest note that numeric arithmetic stays low (in-thesis: capability, not target behavior; tool-offload tried and didn't help). Plus a **data-validity note** (procedurally generated, not AI-generated -> exact labels by construction) and a **pending-headline** note (real-world eval expanding from 8 labeled).
 - **Why:** required BrainLift deliverable; also captures the mentor's point that our data is deterministic ground-truth, not hallucination-prone synthetic.
