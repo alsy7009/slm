@@ -12,6 +12,13 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Add §9e: LLM-as-judge (vision Claude, 4-dim rubric) (2026-07-11)
+- **What:** New §9e cell in both notebooks. A **vision-capable Claude** scores base vs tuned outputs **0-2** on the brief's Appendix A dimensions — spec adherence, robustness, task quality, and **consistency (internal self-consistency)** — judging each output independently (blind) on the synthetic val set. Prints a mean-per-dimension base/tuned/delta table + an error-analysis list of tuned items scoring <2.
+- **Why:** LLM-as-judge is a required graded deliverable; it measures the holistic axes the mechanical eval (§9) structurally cannot (clarity, spec-adherence in spirit, robustness, self-consistency).
+- **Security:** `ANTHROPIC_API_KEY` is read from Colab Secrets or a hidden `getpass` prompt — never hardcoded or printed.
+- **Validated:** both notebooks compile (21 code cells); offline tests pass — JSON extraction from a noisy judge reply, and image resize+JPEG-base64 encode (verifies JPEG magic). Live judging runs in Colab with a key.
+
+
 ## wip — _20260710 notebook: keep full pipeline, verify eval path (2026-07-11)
 - **What:** Reverted `CircuitSight_training_20260710.ipynb` from the lean eval-only build back to the **full pipeline** (training + eval, 40 cells) — a clean, outputs-stripped copy of the canonical notebook — after asserting the eval path is correct (non-greedy `parse_final`, 896 cap everywhere / no `cap400`, Drive `DATASET_ZIP`/`MODEL_ZIP`, `EVAL_N=30`, `OFFLOAD_N=15`, load-model-from-Drive cell present).
 - **Why:** user wants the whole pipeline retained but will only run the eval cells.
