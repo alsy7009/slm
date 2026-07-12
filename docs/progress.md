@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — BrainLift: add Outcome section (did data->behavior hold?) (2026-07-12)
+- **What:** Added an **Outcome** section to Part 2 of `behavior_spec_brainlift.md` — the brief's required "whether data->behavior held, with evidence." Maps each result to a Spiky POV: grounding (recall 0->~0.80, reactive-type ~0.5->1.0), honesty (fabrication ~0.3->0, honest-abstention ~0->~0.8-1.0), step-verification (Req 0->~0.5), the independent LLM-judge (spec 0->0.92, robustness 0->0.92, task 0.08->1.08, consistency 0->1.08), and an honest note that numeric arithmetic stays low (in-thesis: capability, not target behavior; tool-offload tried and didn't help). Plus a **data-validity note** (procedurally generated, not AI-generated -> exact labels by construction) and a **pending-headline** note (real-world eval expanding from 8 labeled).
+- **Why:** required BrainLift deliverable; also captures the mentor's point that our data is deterministic ground-truth, not hallucination-prone synthetic.
+- **Validated:** numbers reference results.md; deltas rounded/qualified where they vary across runs; real-world numbers explicitly flagged as pending.
+
+
 ## wip — Record LLM-as-judge results + error analysis in results.md (2026-07-12)
 - **What:** Added the §9e LLM-as-judge results (vision Claude via TrueFoundry gateway, n=12) to `docs/results.md`: base->tuned means spec 0.00->0.92, robustness 0.00->0.92, task_quality 0.08->1.08, consistency 0.00->1.08, plus a required **error-analysis paragraph** synthesized from the judge's per-item notes (superficial verification; bridge/nodal self-inconsistency; OOD perception slips e.g. Zener-as-source; over-symbolic answers + the trailing PLAN line as a format break).
 - **Why:** LLM-as-judge is a required graded deliverable; the holistic scores + error analysis complement the mechanical eval and tell the honest story (behavior/format instilled ~1.0; residual errors in verification, hard reasoning, and unfamiliar-component perception).
