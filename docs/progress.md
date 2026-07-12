@@ -12,6 +12,15 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+---
+
+## wip — §9f: fine-tuned 3B vs a frontier VLM on the same synthetic eval (2026-07-12)
+- **What:** New `§9f` cell in all three training notebooks (main + dated + colab mirrors). Runs the fine-tuned 3B and a **frontier vision Claude** (via the same TrueFoundry gateway as §9e) over the **same held-out synthetic** val rows, with the **identical image + `INSTRUCTION` + `score_record`/`aggregate` harness** for both, and prints a side-by-side metric table with a per-metric winner. Grounding uses `ground_mode="iou"` (id-agnostic box overlap) so neither model is penalized for how it numbers components. `FRONTIER_MODEL`/`FRONTIER_N` configurable; reuses §9e's gateway `client` if present.
+- **Why:** the user wanted a fair head-to-head that isolates the moat. Deliberately **synthetic, not AP FRQs**: a frontier model can web-search a published FRQ solution matching the figure (de-facto tool offload) the offline 3B can't, so an exam question would measure retrieval; procedurally-generated circuits have no web solution, isolating on-image perception + grounding + reasoning on complex diagrams.
+- **Validated:** all three notebooks compile; offline glue dry-run (perfect "ours" vs a boxes/FINAL-stripped "frontier") prints correctly and the winner logic is right (ours wins grounding + answer, ties where both correct, blank where one side is n/a).
+- **Expected read:** frontier likely leads on final-number arithmetic; the 3B leads on grounding + structured checkable output (format-dependent axes favor the tuned model by construction — that is the point).
+
+
 ## wip — Dataset visual + label variety (LOOP layout + label styles); drop PLAN (2026-07-12)
 - **What:** New **`render_chain_loop`** — a rectangular *perimeter* layout (source on the left; series elements on the top rail, **vertical** resistors on the right rail, and the bottom rail) — chosen ~50% of the time for dc/reactive records via `LAYOUT_VARIETY`. Ported the bridge cell's vertical resistor symbols. Added **label-style variety** (`compose_label` + `LABEL_STYLE_VARIETY`): the on-image label varies — `R1`/`R₁`/`Resistor 1`, source `V`/`ε`/`E`, optional designator+value — while the **target output + gold ids stay canonical (R1, V1)**, so the eval/parser are unaffected and the model just learns to READ real conventions. Bridge labels routed through the same. `INCLUDE_PLAN=False` + removed the `PLAN` sentence from `INSTRUCTION` (tool-offload dropped). Eval `parse_boxes` now recognizes `E`/`ε` sources.
 - **Why:** the real-world eval showed grounding **0.80 → 0.00** — the model overfit the fixed top-rail ladder + single label convention. Layout + label variety directly targets that synthetic→real domain gap.
