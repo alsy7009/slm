@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — §9e judge -> Google Gemini (free tier, vision) via OpenAI-compat (2026-07-11)
+- **What:** Switched §9e to **Google Gemini** (`gemini-2.0-flash`, vision) using Gemini's **OpenAI-compatible endpoint** (base_url on the OpenAI SDK), so the judge code is unchanged bar the client init + model. Key = free `GEMINI_API_KEY` (aistudio.google.com), Colab Secrets/getpass, never printed; preflight ping fails fast. Both notebooks.
+- **Why:** the user has neither a valid Anthropic API key (the "chat" credential is a subscription/OAuth, not an `sk-ant-api03` API key) nor a funded OpenAI key. Gemini's free tier unblocks the LLM-as-judge deliverable with no billing.
+- **Validated:** both notebooks compile (21 code cells); OpenAI-compat content shape (base64 image_url data-URI) + JSON parse already validated. Live judging runs in Colab with a free key.
+
+
 ## wip — §9e judge back to Anthropic (Claude) + preflight key check (2026-07-11)
 - **What:** Switched §9e back to the **Anthropic** SDK (`ANTHROPIC_API_KEY`, `claude-sonnet-5` vision) in both notebooks, and added a **preflight**: it prints the key format (length + sk-ant- prefix, never the key) and does a 5-token ping, raising a clear error if the key/model is bad — so a bad key fails instantly instead of after 12 silent 401s.
 - **Why:** the user's OpenAI key didn't work; going back to Anthropic. Earlier the Anthropic run 401'd with no early warning — the preflight fixes that.
