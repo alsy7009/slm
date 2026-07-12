@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — §9e judge back to Anthropic (Claude) + preflight key check (2026-07-11)
+- **What:** Switched §9e back to the **Anthropic** SDK (`ANTHROPIC_API_KEY`, `claude-sonnet-5` vision) in both notebooks, and added a **preflight**: it prints the key format (length + sk-ant- prefix, never the key) and does a 5-token ping, raising a clear error if the key/model is bad — so a bad key fails instantly instead of after 12 silent 401s.
+- **Why:** the user's OpenAI key didn't work; going back to Anthropic. Earlier the Anthropic run 401'd with no early warning — the preflight fixes that.
+- **Validated:** both notebooks compile (21 code cells); offline checks pass (anthropic image block shape, JSON parse). Key handling unchanged (Secrets/getpass, never printed).
+
+
 ## wip — §9e judge switched to OpenAI (vision GPT-4o) + preflight (2026-07-11)
 - **What:** Rewrote §9e to use the **OpenAI** SDK (`OPENAI_API_KEY`, `gpt-4o` vision via `chat.completions` with a base64 `image_url`) instead of the Anthropic SDK, in both notebooks. Added a **preflight ping** that fails fast on a bad key/model. Same rubric, same independent/blind scoring, same base-vs-tuned table + error analysis.
 - **Why:** user has an OpenAI key, not an Anthropic one — and an OpenAI key can't authenticate against the Anthropic API regardless of the variable name (earlier run 401'd on every call).
