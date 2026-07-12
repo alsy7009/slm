@@ -205,6 +205,34 @@ After making tool-offload a **trained** capability — dataset regenerated with 
 
 ---
 
+## LLM-as-judge (holistic rubric) — v2 model, n=12
+
+A **vision-capable Claude** (via the TrueFoundry gateway) scored base vs. tuned outputs **0–2** on the brief's Appendix A rubric, judging each output independently (blind), on 12 held-out synthetic val items. This complements the mechanical eval: it measures axes code can't — spec-adherence *in spirit*, robustness, teachability, and internal self-consistency. (`consistency` = internal self-consistency: does `FINAL` match the steps, does the verification confirm the answer, do declared concepts match usage.)
+
+| Dimension | Base | Tuned | Δ |
+|---|---|---|---|
+| spec_adherence | 0.00 | 0.92 | +0.92 |
+| robustness | 0.00 | 0.92 | +0.92 |
+| task_quality | 0.08 | 1.08 | +1.00 |
+| consistency | 0.00 | 1.08 | +1.08 |
+
+*(0 = violates/useless, 1 = partially embodies, 2 = fully embodies. Judge: `claude-sonnet-5` via gateway; deterministic-ish, temperature default.)*
+
+**Read:** fine-tuning lifts *every* holistic axis from ~0 to ~1. The base model produces no structured, grounded solution (near-0 across the board); the tuned model reliably follows perception → concepts → topology → solve → verify → FINAL. It lands at ~1 rather than ~2 because it embodies the behavior consistently but not flawlessly — the residual gaps below.
+
+### Error analysis (from the judge's per-item notes)
+
+Across the 12 items the tuned model reliably produces the required structure (grounded perception → concepts → topology → solve → verification → FINAL), which is why spec-adherence and robustness rise from 0 to ~0.9. The judge capped most items at **1 rather than 2** for four recurring reasons:
+
+1. **Superficial verification (most common).** The self-check step is usually generic prose ("the answer is consistent") rather than a real numeric back-substitution, so it doesn't actually confirm the result (flagged on ~5 items, e.g. img_009360, img_007828, img_006873).
+2. **Self-inconsistency on hard circuits.** On Wheatstone-bridge / nodal problems the stated node voltages don't satisfy the model's own KCL equations, so the final current contradicts its derivation (img_002430) — the lowest `consistency` scores cluster here.
+3. **Perception slips on out-of-distribution inputs.** Misread values (150Ω→100Ω, a missing 10Ω in img_004283) and a **Zener diode mislabeled as a 12 V source** (img_006014) — component types absent from the training distribution.
+4. **Over-symbolic answers + a format artifact.** It sometimes returns a symbolic-only answer when the values are legible without saying why (img_005791), and the trailing tool-offload **`PLAN` line is often malformed or placed after `FINAL`**, which the judge counts as a format break (img_009360, img_006873).
+
+The worst case (img_003744, a power problem with no legible source value) failed all four dimensions: inconsistent symbolic math plus an order violation. **Net:** the fine-tune succeeds at instilling the *behavior and format* (the moat); the residual errors concentrate in (a) genuine verification, (b) hard multi-node reasoning, and (c) perception on unfamiliar components — all data/curriculum-addressable. A quick win, now that tool-offload is dropped, is to regenerate without the `PLAN` line (`INCLUDE_PLAN=False`) so it stops costing spec-adherence points.
+
+---
+
 ## How to reproduce
 
 1. Colab, GPU runtime (a free **T4** is enough — inference only). Run §1 install → restart → imports →

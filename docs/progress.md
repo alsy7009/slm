@@ -12,6 +12,12 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Record LLM-as-judge results + error analysis in results.md (2026-07-12)
+- **What:** Added the §9e LLM-as-judge results (vision Claude via TrueFoundry gateway, n=12) to `docs/results.md`: base->tuned means spec 0.00->0.92, robustness 0.00->0.92, task_quality 0.08->1.08, consistency 0.00->1.08, plus a required **error-analysis paragraph** synthesized from the judge's per-item notes (superficial verification; bridge/nodal self-inconsistency; OOD perception slips e.g. Zener-as-source; over-symbolic answers + the trailing PLAN line as a format break).
+- **Why:** LLM-as-judge is a required graded deliverable; the holistic scores + error analysis complement the mechanical eval and tell the honest story (behavior/format instilled ~1.0; residual errors in verification, hard reasoning, and unfamiliar-component perception).
+- **Validated:** numbers taken verbatim from the 12-item run output; means recomputed match (all 12 items returned scores).
+
+
 ## wip — §9e judge via TrueFoundry gateway (the chat credential) (2026-07-12)
 - **What:** Reworked §9e to call the **TrueFoundry LLM gateway** (the credential that powers Claude Code) instead of a provider directly: Anthropic SDK with `base_url=TFY_BASE_URL` + **Bearer** `auth_token=TFY_TOKEN`. Set `JUDGE_MODEL` to a gateway-served model; preflight ping fails fast. Repo keeps a **placeholder** `TFY_BASE_URL` (internal gateway hostname not committed); token via Colab Secret, never printed.
 - **Why:** the `AQ.`/`tfy` key is a TrueFoundry **gateway** token (Bearer), not a direct Anthropic/OpenAI/Gemini API key — which is why every direct-provider attempt 401'd or hit a 0-quota. The project is meant to use the gateway that powers the chat (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`).
