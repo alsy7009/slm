@@ -12,6 +12,13 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+## wip — Dataset visual + label variety (LOOP layout + label styles); drop PLAN (2026-07-12)
+- **What:** New **`render_chain_loop`** — a rectangular *perimeter* layout (source on the left; series elements on the top rail, **vertical** resistors on the right rail, and the bottom rail) — chosen ~50% of the time for dc/reactive records via `LAYOUT_VARIETY`. Ported the bridge cell's vertical resistor symbols. Added **label-style variety** (`compose_label` + `LABEL_STYLE_VARIETY`): the on-image label varies — `R1`/`R₁`/`Resistor 1`, source `V`/`ε`/`E`, optional designator+value — while the **target output + gold ids stay canonical (R1, V1)**, so the eval/parser are unaffected and the model just learns to READ real conventions. Bridge labels routed through the same. `INCLUDE_PLAN=False` + removed the `PLAN` sentence from `INSTRUCTION` (tool-offload dropped). Eval `parse_boxes` now recognizes `E`/`ε` sources.
+- **Why:** the real-world eval showed grounding **0.80 → 0.00** — the model overfit the fixed top-rail ladder + single label convention. Layout + label variety directly targets that synthetic→real domain gap.
+- **Validated:** scratch renders 120 loops with **0/621** box-on-symbol failures; the **notebook** `make_record` with both flags ON → **0/1234** box failures, **0** FINAL/gold mismatches, **0** PLAN lines, loop used 65/199 records; both notebooks compile; ported perfect-model eval still **1.0** (parser change safe). Visual spot-checks (loop with vertical right-edge resistors, subscripts, ε, word labels) read as real circuits.
+- **Next (user):** regenerate the dataset (flags ON) → retrain → re-run §10 to measure the real-grounding gain vs 0.00.
+
+
 ## wip — Add tools/circuit_labeler.html (browser real-eval labeler) (2026-07-12)
 - **What:** Self-contained HTML tool (no install/server): load a circuit image, **drag bounding boxes** (auto-assigned V1/R1/C1/L1/SW ids, auto-incrementing), fill all record fields (family, question_type, question, topology, perception-only vs numeric answer, optional gold_values, source/license/notes), and it exports a **`labeled.jsonl` line** in the exact real_eval schema. Boxes are emitted as **0–1000 normalized** coords; component inventory auto-derived from box ids.
 - **Why:** the real-eval gold must stay **authoritative hand-labels** (human draws the boxes). This makes that fast, and matches `make_real_eval_record` so records drop straight into `data/real_eval/labeled.jsonl`.
