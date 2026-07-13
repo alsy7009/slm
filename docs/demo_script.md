@@ -35,11 +35,13 @@ And circuit VLMs specifically suffer documented **'spatial blindness'** — they
 **[SAY]** "So what's the moat? **Perception** — reading complex circuits correctly and grounding every claim — **not arithmetic.** And we can prove it's perception, not luck: on **symbolic** problems, where the answer is a formula and there's *no arithmetic*, the model is right about **31%** of the time; on the *identical* **numeric** problems it's near **zero**. The reasoning is there — only the calculator step slips, and a calculator is a solved problem you can bolt on. We deliberately didn't chase it."
 
 ## Scene 5 — Head-to-head (3:00–4:30)
-**[SHOW]** `demo_boxes.png` — three panels, same image.
-**[SAY]** "Same circuit, three models.
-- **Base Qwen-3B:** no boxes at all, and it miscounts the components. It literally can't point to anything.
-- **Frontier Sonnet:** it tries — but its boxes are scattered and it misreads the structure. *Spatial blindness*, exactly as the research predicts. [*fill from §9g: e.g. 'it merges two branches / miscounts the bridge'*]
-- **Our tuned 3B:** every component boxed on target, correct count, correct series-parallel structure — and it ends by checking its own answer."
+**[SHOW]** `demo_boxes.png` — three panels, same image (`img_002430`, a Wheatstone bridge).
+**[SAY]** "Same circuit — and it's a **Wheatstone bridge**, the case you *can't* reduce with series-parallel rules; you need nodal analysis. Three models.
+- **Base Qwen-3B:** no boxes at all, and it miscounts the resistors. It can't point to anything — grounding **zero**.
+- **Frontier Sonnet:** here's the tell — it counts the components *correctly*, but its grounding is *also* **zero**. It knows *what's* in the circuit but not **where** anything is — textbook spatial blindness. (And it can't web-look-up a synthetic figure, so it's on its own.)
+- **Our tuned 3B:** every one of the six components boxed on target — grounding **1.00** — correct count, and it sets up the node equations a bridge actually requires."
+
+*(You cannot solve a bridge without knowing which resistor sits on which node — so Sonnet naming the parts but not locating them is exactly why it can't do this circuit, and why grounding is the moat.)*
 
 **[SHOW]** the metric table.
 **[SAY]** "Across the eval:
@@ -66,3 +68,4 @@ The single most convincing visual is the **box overlay**: red boxes on component
 - Metrics are the **held-out synthetic** split (the real-world transfer eval is still small; don't over-claim on real diagrams).
 - The Sonnet head-to-head numbers come from **your §9f run** — paste the actual table before recording.
 - Frame the arithmetic gap as *deliberate scope*, not a hidden weakness: the moat is perception + setup + honesty; arithmetic is offloadable.
+- **Anchor `img_002430` on perception, not the final number.** This is the bridge the §9e judge flagged for a self-consistency slip (its node voltages don't perfectly satisfy its own KCL). The clean, defensible wins here are **grounding 1.00**, correct **component count**, and **recognizing it needs nodal analysis** — show the box overlay and stop there. If you display the full tuned text, describe it as "sets up the node equations" — don't claim the final current is exact. That's on-message: the moat is *reading + setup*, and bridge arithmetic is the offloadable part.
