@@ -37,7 +37,7 @@ And circuit VLMs specifically suffer documented **'spatial blindness'** — they
 ## Scene 5 — Head-to-head (3:00–4:30)
 **[SHOW]** `demo_boxes.png` — three panels, same image (`img_002430`, a Wheatstone bridge).
 **[SAY]** "Same circuit — and it's a **Wheatstone bridge**, the case you *can't* reduce with series-parallel rules; you need nodal analysis. Three models.
-- **Base Qwen-3B:** no boxes at all, and it miscounts the resistors. It can't point to anything — grounding **zero**.
+- **Base Qwen-3B:** it misreads the *structure* — it treats the bridge as a simple parallel+series network, i.e. the **wrong circuit**. And even when we ask it **directly** for bounding boxes, it [*fill from §9g: draws none / scatters them off the components*] — grounding **zero**. It can't reliably point to what it's reasoning about.
 - **Frontier Sonnet:** the real tell. It gets *more* right than base — it correctly calls it an **unbalanced Wheatstone bridge** and even emits bounding boxes. But watch *where* they land: its boxes cluster in the wrong part of the image. Sonnet is drawing a **generic bridge from memory, not reading where the parts actually are** — so its grounding is still **zero**. Textbook spatial blindness: it knows *what* and the abstract *structure*, but not *where* on this image.
 - **Our tuned 3B:** every one of the six components boxed on target — grounding **1.00** — correct count, and it sets up the node equations a bridge actually requires."
 
@@ -58,7 +58,7 @@ And an **independent, vision-capable Claude judge**, scoring blind, rates spec-a
 
 ## Why this image works (base + Sonnet fail, tuned succeeds)
 The §9g picker prefers **Wheatstone bridges** and **4-branch parallel networks** because they maximize the gap:
-- **Base Qwen** emits **no bounding boxes** → grounding 0.00, and miscounts components.
+- **Base Qwen** misreads the topology (treats the bridge as series-parallel) and emits no boxes on the task; §9g then asks it *directly* for boxes, and it still grounds ~0 — it can't localize even when told exactly what format to use.
 - **Frontier Sonnet** gets the components and even the topology right, and *does* emit boxes — but they land in the wrong place (a generic bridge from its prior, not this image's actual positions), so grounding stays ~0. The documented "spatial blindness." (It also can't web-look-up a synthetic circuit, so it's on its own.)
 - **Tuned 3B** was trained to ground + count + state topology, so it lands boxes on-target (IoU ≥ 0.5) and gets the structure right.
 
