@@ -1,6 +1,6 @@
 # CircuitSight — Behavior Spec & BrainLift
 
-*A small vision-language model that reads an AP-Physics-C circuit schematic and solves it — grounding every claim in the image and verifying its own steps.*
+*A small (3B) vision-language model that reliably reads **complex** circuit schematics — grounding every component to the image, reading non-series-parallel topologies, and verifying its setup — where base small models misread the circuit and frontier models can't localize it. Arithmetic is offloadable; the moat is the grounded, honest reading.*
 
 ---
 
@@ -8,30 +8,44 @@
 
 ### The one-sentence spec
 
-Given a schematic image and a question, the model identifies the components (pointing to where each one is in the image), states the topology, writes the governing equations, solves for the requested quantity, and checks its own answer — or, if a value is genuinely illegible, says so and reports `null` rather than inventing it.
+Given a circuit schematic and a question, the model **reads the circuit off the image** — naming every component and pointing to *where it actually is* in the picture, stating the true series / parallel / **bridge** topology, and setting up the governing equations — then solves and checks itself; and when a value is genuinely illegible it reports `null` instead of inventing one. The defensible capability is the **grounded, honest reading and setup of complex circuits**, not the final arithmetic (which is offloadable to a solver).
+
+### The moat — what this model does that others don't
+
+The value is not "solves circuits." It is **reading a complex, real-looking schematic correctly and grounding every claim to the actual image** — the exact place two other classes of model fail:
+
+- **Small / base VLMs misread the circuit.** Given a Wheatstone bridge, base Qwen-3B calls it a simple series-parallel network and never draws a box — it sets up the *wrong circuit*, then does arithmetic on it. Reading, not algebra, is the failure.
+- **Frontier VLMs can't localize on the image.** Given the same bridge, a frontier model (Claude Sonnet) *names* the components and even labels it an "unbalanced Wheatstone bridge" — but its bounding boxes land in the wrong place; it emits a generic bridge layout **from prior**, not where the parts sit in *this* image. This is the documented "spatial blindness": right about *what*, wrong about *where*.
+
+Our tuned 3B does what both miss: it **boxes every component on the actual pixels** (grounding recall ≈ 0.84 overall, 1.00 on the demo bridge), reads **non-series-parallel** topology correctly, declares the right solving method (nodal analysis), and abstains honestly on illegible values. That — grounded, honest, correctly-structured reading of *hard* circuits at 3B — is the moat. Arithmetic is deliberately **outside the capability claim**: the model produces the correct *symbolic setup* far more often than the final number, and a calculator/solver closes that last step.
+
+### Scope
+
+**In scope:** DC / AP-level resistor networks, reactive circuits (a capacitor / inductor at steady-state or t = 0), and **non-series-parallel bridges**; values as numbers *or* symbols; grounded perception, correct topology, verified setup, honest abstention; and transfer to **real** diagrams (photographed / scanned, varied layout, varied labels — `R1` / `R₁` / "Resistor 1", source `V` / `ε` / `E`).
+**Out of scope (on purpose):** being a calculator — final numeric arithmetic is offloadable; transistor-level / analog-IC design; solving without grounding or verification.
 
 ### Required output structure (in this order — perception before answer)
 
-1. **Components** — the inventory (e.g., "1 voltage source, 3 resistors"), each with the image region it occupies.
-2. **Concepts used** — the minimal set of solving concepts the problem actually requires (Ohm's law, parallel/series combination).
-3. **Topology** — what is in series / parallel, referencing the grounded components.
-4. **Equations & solution** — step by step, with intermediate values (node voltages, branch currents).
-5. **Verification** — a consistency check (e.g., plug the answer back: V = I·R_eq; confirm a parallel combination is smaller than its smallest branch).
-6. **FINAL** — a machine-readable line: `FINAL: {answer_id, answer_current, R_eq, n_resistors, abstain}`.
+1. **Components** — the inventory (e.g., "1 source, 5 resistors"), each with the image region it occupies as `<box>[x0,y0,x1,y1]</box>` (0–1000 coords).
+2. **Concepts used** — the minimal set the problem needs (Ohm's law, series/parallel, nodal analysis for a bridge, steady-state / t = 0 for a reactive element).
+3. **Topology** — what is in series / parallel / bridging, referencing the grounded components; for a bridge, state that it is **not** series-parallel reducible.
+4. **Solution** — step by step, with intermediate values (R_eq, node voltages, branch currents).
+5. **Verification** — a real consistency check (plug back V = I·R_eq; a parallel block is smaller than its smallest branch; KCL closes at each node).
+6. **FINAL** — a machine-readable line: `FINAL: {"quantity", "target_id", "value", "unit", "abstain"}`.
 
-### Pass / fail rules (all mechanically checkable against gold)
+### Pass / fail rules (mechanically checkable against gold; ordered by centrality to the moat)
 
-- **Component identification** — right count and types. Fail on miscount, wrong type, or a hallucinated component.
-- **Grounding** — cited regions overlap the true component locations. Fail on regions that don't correspond to a real component (a hallucinated coordinate).
-- **Topology** — the stated series/parallel structure matches the gold netlist (graph-isomorphic).
-- **Every intermediate value** — node voltages and branch currents match the solver within tolerance. A correct final answer reached through a wrong intermediate step is a **fail** (no lucky guesses).
-- **Final answer** — matches SPICE within tolerance.
-- **Concept scoping** — declared concepts are a subset of those the problem needs. Inventing an unneeded concept is a **concept-hallucination** fail.
-- **Honesty** — for an illegible value, output `null`. Inventing a number for an unreadable value (**fabrication**) is the cardinal failure, scored separately.
+- **Grounding (core — beats frontier models).** Each cited box must overlap the true component location (IoU ≥ 0.5). Fail on boxes that land on nothing real, or on a plausible-but-wrong *prior* layout that doesn't match this image.
+- **Topology incl. non-series-parallel (core — beats base models).** The stated structure must match the gold netlist (graph-isomorphic). A bridge read as a series-parallel network is a fail.
+- **Component identification.** Right count and types; capacitor-vs-inductor is the reactive "spatial-blindness" litmus. Fail on miscount, wrong type, or a hallucinated component.
+- **Verified setup, not lucky answers.** Every intermediate (R_eq, branch currents) matches the solver within tolerance. A correct final number via a wrong intermediate is a **fail**.
+- **Honesty (cardinal).** For an illegible value, output `null`; inventing a number (**fabrication**) is the cardinal failure, scored separately from accuracy.
+- **Concept scoping.** Declared concepts are a subset of those the problem needs; inventing an unneeded one is a concept-hallucination fail.
+- **Final numeric answer (secondary, offloadable).** Checked against the solver but reported *separately* and explicitly **not** the capability claim — correct grounded setup with an arithmetic slip is a near-miss, not a core failure.
 
-### What "good" is (the metrics, base vs. tuned)
+### What "good" is (the metrics)
 
-Primary: component accuracy, grounding accuracy, topology accuracy, **step-verified solve accuracy** (final answer *and* all intermediates correct), and **fabrication rate** vs. **honest-abstention rate**. Secondary: concept-hallucination rate; a judged clarity score. The headline result is base-vs-tuned on a **hand-labeled real-world** set, not synthetic.
+**Primary (the moat):** grounding accuracy (boxes on real components), topology accuracy (incl. bridges), component + reactive-type accuracy, honest-abstention vs. fabrication, and **step-verified setup** (components + topology + intermediates all correct). **Headline evidence:** a three-way head-to-head on the *same* schematic — base Qwen (misreads), frontier Sonnet (can't localize), tuned 3B (grounds + structures correctly) — alongside base-vs-tuned deltas and a blind LLM-judge on holistic behavior. **Secondary / de-scoped:** final numeric answer accuracy (offloadable), reported honestly with the numeric-vs-symbolic split that shows the residual gap is *arithmetic*, not reasoning. The ultimate target is transfer to a **hand-labeled real-world** set.
 
 ---
 

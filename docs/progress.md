@@ -14,6 +14,13 @@ A running changelog of what we update each iteration. Newest first. Keep entries
 
 ---
 
+---
+
+## wip — Moat-tailored behavior spec + project video script (2026-07-12)
+- **behavior_spec_brainlift.md Part 1** rewritten around the moat: added a **"The moat"** subsection (two failure modes it beats — base *misreads* the circuit, frontier *can't localize* it), a Scope block, moat-ordered pass/fail rules (grounding + non-series-parallel topology as core; final numeric answer explicitly secondary/offloadable), and the corrected generalized `FINAL` schema. Subtitle now states the moat.
+- **docs/video_script.md** (new): 3–5 min project-summary voiceover following the required outline — what we trained / goal + BrainLift research / eval methodology / results — with a number cheat-sheet and cited sources. Distinct from demo_script.md (the live head-to-head demo).
+
+
 ## wip — §9f: fine-tuned 3B vs a frontier VLM on the same synthetic eval (2026-07-12)
 - **What:** New `§9f` cell in all three training notebooks (main + dated + colab mirrors). Runs the fine-tuned 3B and a **frontier vision Claude** (via the same TrueFoundry gateway as §9e) over the **same held-out synthetic** val rows, with the **identical image + `INSTRUCTION` + `score_record`/`aggregate` harness** for both, and prints a side-by-side metric table with a per-metric winner. Grounding uses `ground_mode="iou"` (id-agnostic box overlap) so neither model is penalized for how it numbers components. `FRONTIER_MODEL`/`FRONTIER_N` configurable; reuses §9e's gateway `client` if present.
 - **Why:** the user wanted a fair head-to-head that isolates the moat. Deliberately **synthetic, not AP FRQs**: a frontier model can web-search a published FRQ solution matching the figure (de-facto tool offload) the offline 3B can't, so an exam question would measure retrieval; procedurally-generated circuits have no web solution, isolating on-image perception + grounding + reasoning on complex diagrams.
