@@ -38,7 +38,7 @@ And circuit VLMs specifically suffer documented **'spatial blindness'** — they
 **[SHOW]** `demo_boxes.png` — three panels, same image (`img_002430`, a Wheatstone bridge).
 **[SAY]** "Same circuit — and it's a **Wheatstone bridge**, the case you *can't* reduce with series-parallel rules; you need nodal analysis. Three models.
 - **Base Qwen-3B:** no boxes at all, and it miscounts the resistors. It can't point to anything — grounding **zero**.
-- **Frontier Sonnet:** here's the tell — it counts the components *correctly*, but its grounding is *also* **zero**. It knows *what's* in the circuit but not **where** anything is — textbook spatial blindness. (And it can't web-look-up a synthetic figure, so it's on its own.)
+- **Frontier Sonnet:** the real tell. It gets *more* right than base — it correctly calls it an **unbalanced Wheatstone bridge** and even emits bounding boxes. But watch *where* they land: its boxes cluster in the wrong part of the image. Sonnet is drawing a **generic bridge from memory, not reading where the parts actually are** — so its grounding is still **zero**. Textbook spatial blindness: it knows *what* and the abstract *structure*, but not *where* on this image.
 - **Our tuned 3B:** every one of the six components boxed on target — grounding **1.00** — correct count, and it sets up the node equations a bridge actually requires."
 
 *(You cannot solve a bridge without knowing which resistor sits on which node — so Sonnet naming the parts but not locating them is exactly why it can't do this circuit, and why grounding is the moat.)*
@@ -59,7 +59,7 @@ And an **independent, vision-capable Claude judge**, scoring blind, rates spec-a
 ## Why this image works (base + Sonnet fail, tuned succeeds)
 The §9g picker prefers **Wheatstone bridges** and **4-branch parallel networks** because they maximize the gap:
 - **Base Qwen** emits **no bounding boxes** → grounding 0.00, and miscounts components.
-- **Frontier Sonnet** *attempts* boxes but is imprecise and mis-structures dense schematics — the documented "spatial blindness" (it also can't web-look-up a synthetic circuit, so it's on its own).
+- **Frontier Sonnet** gets the components and even the topology right, and *does* emit boxes — but they land in the wrong place (a generic bridge from its prior, not this image's actual positions), so grounding stays ~0. The documented "spatial blindness." (It also can't web-look-up a synthetic circuit, so it's on its own.)
 - **Tuned 3B** was trained to ground + count + state topology, so it lands boxes on-target (IoU ≥ 0.5) and gets the structure right.
 
 The single most convincing visual is the **box overlay**: red boxes on components for the tuned model, none (or scattered) for the other two.
@@ -68,4 +68,5 @@ The single most convincing visual is the **box overlay**: red boxes on component
 - Metrics are the **held-out synthetic** split (the real-world transfer eval is still small; don't over-claim on real diagrams).
 - The Sonnet head-to-head numbers come from **your §9f run** — paste the actual table before recording.
 - Frame the arithmetic gap as *deliberate scope*, not a hidden weakness: the moat is perception + setup + honesty; arithmetic is offloadable.
+- **The Sonnet panel shows its boxes in the wrong place — not an empty panel.** §9g parses boxes *leniently* (any format: our `<box>` tag, a markdown table, `R1: [..]`), so you fairly show that Sonnet *does* attempt to localize but **mislocates** (it emits a generic bridge layout, not this image's positions). That's more honest and more compelling than an empty panel — and it's why "same prompt, still fails grounding" is a fair claim.
 - **Anchor `img_002430` on perception, not the final number.** This is the bridge the §9e judge flagged for a self-consistency slip (its node voltages don't perfectly satisfy its own KCL). The clean, defensible wins here are **grounding 1.00**, correct **component count**, and **recognizing it needs nodal analysis** — show the box overlay and stop there. If you display the full tuned text, describe it as "sets up the node equations" — don't claim the final current is exact. That's on-message: the moat is *reading + setup*, and bridge arithmetic is the offloadable part.
